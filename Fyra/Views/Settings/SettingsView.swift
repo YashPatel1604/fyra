@@ -569,6 +569,7 @@ struct SettingsView: View {
 struct ExportCompareImageSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.displayScale) private var displayScale
     let checkIns: [CheckIn]
     let weightUnit: WeightUnit
     let onExport: () -> Void
@@ -639,7 +640,8 @@ struct ExportCompareImageSheet: View {
             toPath: toPath,
             fromLabel: formattedDate(from.date),
             toLabel: formattedDate(to.date),
-            caption: cap
+            caption: cap,
+            scale: displayScale
         ) else { return }
         ExportService.shareImage(image, from: nil)
     }

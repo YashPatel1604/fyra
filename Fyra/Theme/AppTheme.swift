@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 /// Calm, minimal design system — quiet logbook feel, no loud colors.
 /// Accessibility: minimum 44pt tap targets, Dynamic Type–friendly fonts.
@@ -51,19 +52,29 @@ enum AppTheme {
 }
 
 enum NeonTheme {
-    static let background = Color.black
-    static let surface = Color(red: 24 / 255, green: 24 / 255, blue: 27 / 255)
-    static let surfaceAlt = Color(red: 39 / 255, green: 39 / 255, blue: 42 / 255)
-    static let surfaceStrong = Color(red: 63 / 255, green: 63 / 255, blue: 70 / 255)
-    static let border = Color(red: 39 / 255, green: 39 / 255, blue: 42 / 255)
-    static let borderStrong = Color(red: 63 / 255, green: 63 / 255, blue: 70 / 255)
-    static let textPrimary = Color.white
-    static let textSecondary = Color(red: 161 / 255, green: 161 / 255, blue: 170 / 255)
-    static let textTertiary = Color(red: 113 / 255, green: 113 / 255, blue: 122 / 255)
-    static let accent = Color(red: 163 / 255, green: 230 / 255, blue: 53 / 255)
-    static let accentSoft = Color(red: 190 / 255, green: 242 / 255, blue: 100 / 255)
-    static let lime500 = Color(red: 132 / 255, green: 204 / 255, blue: 22 / 255)
-    static let lime600 = Color(red: 101 / 255, green: 163 / 255, blue: 13 / 255)
+    private static func uiColor(_ red: CGFloat, _ green: CGFloat, _ blue: CGFloat, _ alpha: CGFloat = 1) -> UIColor {
+        UIColor(red: red / 255, green: green / 255, blue: blue / 255, alpha: alpha)
+    }
+
+    private static func dynamic(_ light: UIColor, _ dark: UIColor) -> Color {
+        Color(uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark ? dark : light
+        })
+    }
+
+    static let background = dynamic(uiColor(248, 250, 252), uiColor(0, 0, 0))
+    static let surface = dynamic(uiColor(241, 245, 249), uiColor(24, 24, 27))
+    static let surfaceAlt = dynamic(uiColor(226, 232, 240), uiColor(39, 39, 42))
+    static let surfaceStrong = dynamic(uiColor(203, 213, 225), uiColor(63, 63, 70))
+    static let border = dynamic(uiColor(203, 213, 225), uiColor(39, 39, 42))
+    static let borderStrong = dynamic(uiColor(148, 163, 184), uiColor(63, 63, 70))
+    static let textPrimary = dynamic(uiColor(15, 23, 42), uiColor(255, 255, 255))
+    static let textSecondary = dynamic(uiColor(51, 65, 85), uiColor(161, 161, 170))
+    static let textTertiary = dynamic(uiColor(100, 116, 139), uiColor(113, 113, 122))
+    static let accent = dynamic(uiColor(163, 230, 53), uiColor(163, 230, 53))
+    static let accentSoft = dynamic(uiColor(190, 242, 100), uiColor(190, 242, 100))
+    static let lime500 = dynamic(uiColor(132, 204, 22), uiColor(132, 204, 22))
+    static let lime600 = dynamic(uiColor(101, 163, 13), uiColor(101, 163, 13))
 
     static let cornerXL: CGFloat = 28
     static let cornerLarge: CGFloat = 24

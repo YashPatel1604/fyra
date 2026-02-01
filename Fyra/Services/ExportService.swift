@@ -48,7 +48,8 @@ enum ExportService {
         toPath: String?,
         fromLabel: String,
         toLabel: String,
-        caption: String?
+        caption: String?,
+        scale: CGFloat
     ) -> UIImage? {
         let fromImg = fromPath.flatMap { ImageStore.shared.load(path: $0) }
         let toImg = toPath.flatMap { ImageStore.shared.load(path: $0) }
@@ -60,7 +61,7 @@ enum ExportService {
             caption: caption
         )
         let renderer = ImageRenderer(content: view)
-        renderer.scale = UIScreen.main.scale
+        renderer.scale = scale
         return renderer.uiImage
     }
 

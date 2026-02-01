@@ -219,11 +219,15 @@ struct CompareView: View {
             } label: {
                 Text("Create Timelapse")
                     .font(.subheadline.weight(.bold))
-                    .foregroundStyle(NeonTheme.accent)
+                    .foregroundStyle(Color.black)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color.black)
+                    .background(NeonTheme.surfaceAlt)
                     .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                            .stroke(NeonTheme.border, lineWidth: 1)
+                    )
             }
         }
         .padding(20)

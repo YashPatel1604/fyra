@@ -22,8 +22,6 @@ enum TimelapseError: Error {
 }
 
 enum TimelapseService {
-    static let defaultOutputSize = CGSize(width: 1080, height: 1440)
-
     static func frames(
         checkIns: [CheckIn],
         pose: Pose,
@@ -54,7 +52,7 @@ enum TimelapseService {
     static func generateVideo(
         frames: [TimelapseFrame],
         frameDuration: Double,
-        outputSize: CGSize = defaultOutputSize,
+        outputSize: CGSize = CGSize(width: 1080, height: 1440),
         progress: ((Int, Int) -> Void)? = nil
     ) async throws -> URL {
         try await withCheckedThrowingContinuation { continuation in
