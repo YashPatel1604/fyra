@@ -92,6 +92,8 @@ final class CheckIn: Identifiable {
     var tagRawValues: [String] = []
     /// Optional waist measurement (e.g. inches or cm; unit follows settings).
     var waistMeasurement: Double?
+    /// Last weight value sent to Apple Health for this check-in (used to avoid duplicate writes).
+    var lastHealthSyncedWeight: Double?
 
     init(
         id: UUID = UUID(),
@@ -102,7 +104,8 @@ final class CheckIn: Identifiable {
         backPhotoPath: String? = nil,
         note: String? = nil,
         tagRawValues: [String] = [],
-        waistMeasurement: Double? = nil
+        waistMeasurement: Double? = nil,
+        lastHealthSyncedWeight: Double? = nil
     ) {
         self.id = id
         self.date = date
@@ -113,6 +116,7 @@ final class CheckIn: Identifiable {
         self.note = note
         self.tagRawValues = tagRawValues
         self.waistMeasurement = waistMeasurement
+        self.lastHealthSyncedWeight = lastHealthSyncedWeight
     }
 
     func photoPath(for pose: Pose) -> String? {

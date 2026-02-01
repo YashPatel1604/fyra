@@ -302,6 +302,14 @@ struct CheckInDetailView: View {
         checkIn.waistMeasurement = Double(waistText.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0.isFinite ? $0 : nil }
         checkIn.tagRawValues = Array(selectedTagRawValues) + (customTagText.isEmpty ? [] : ["custom:\(customTagText)"])
         try? modelContext.save()
+        if settings?.appleHealthSyncEnabled == true {
+            Task { @MainActor in
+                let synced = await HealthSyncService.syncWeightIfNeeded(checkIn: checkIn, settings: settings)
+                if synced {
+                    try? modelContext.save()
+                }
+            }
+        }
         hasChanges = false
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }

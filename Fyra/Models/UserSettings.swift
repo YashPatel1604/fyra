@@ -17,6 +17,14 @@ final class UserSettings {
     var appearanceMode: AppearanceMode?
     /// When true, hide weight on Check-In main surface (use "Add weight" to log).
     var photoFirstMode: Bool = false
+    /// When true, show grid/ghost guide while capturing progress photos.
+    var alignmentAssistEnabled: Bool = true
+    /// When true, show adaptive in-app reminder nudges.
+    var smartRemindersEnabled: Bool = true
+    /// When true, schedule local reminder notifications.
+    var notificationRemindersEnabled: Bool = false
+    /// When true, sync saved weights to Apple Health.
+    var appleHealthSyncEnabled: Bool = false
     /// When true, Compare view hides weight delta.
     var hideWeightDeltaInCompare: Bool = false
     /// Optional goal range (min/max); unit follows weightUnit for weight goals.
@@ -43,6 +51,8 @@ final class UserSettings {
     var compareOpensCount: Int = 0
     /// Date string when compare nudge was dismissed (per day).
     var compareNudgeDismissedDateString: String = ""
+    /// Start date for a gentle 3-day recovery plan after long gaps.
+    var recoveryPlanStartDate: Date?
 
     init(
         id: UUID = UUID(),
@@ -53,6 +63,10 @@ final class UserSettings {
         goalType: GoalType = .none,
         appearanceMode: AppearanceMode? = .system,
         photoFirstMode: Bool = false,
+        alignmentAssistEnabled: Bool = true,
+        smartRemindersEnabled: Bool = true,
+        notificationRemindersEnabled: Bool = false,
+        appleHealthSyncEnabled: Bool = false,
         hideWeightDeltaInCompare: Bool = false,
         goalMinWeight: Double? = nil,
         goalMaxWeight: Double? = nil,
@@ -66,7 +80,8 @@ final class UserSettings {
         returnBannerDismissedAt: Date? = nil,
         compareOpensDateString: String = "",
         compareOpensCount: Int = 0,
-        compareNudgeDismissedDateString: String = ""
+        compareNudgeDismissedDateString: String = "",
+        recoveryPlanStartDate: Date? = nil
     ) {
         self.id = id
         self.weightUnit = weightUnit
@@ -76,6 +91,10 @@ final class UserSettings {
         self.goalType = goalType
         self.appearanceMode = appearanceMode
         self.photoFirstMode = photoFirstMode
+        self.alignmentAssistEnabled = alignmentAssistEnabled
+        self.smartRemindersEnabled = smartRemindersEnabled
+        self.notificationRemindersEnabled = notificationRemindersEnabled
+        self.appleHealthSyncEnabled = appleHealthSyncEnabled
         self.hideWeightDeltaInCompare = hideWeightDeltaInCompare
         self.goalMinWeight = goalMinWeight
         self.goalMaxWeight = goalMaxWeight
@@ -90,5 +109,6 @@ final class UserSettings {
         self.compareOpensDateString = compareOpensDateString
         self.compareOpensCount = compareOpensCount
         self.compareNudgeDismissedDateString = compareNudgeDismissedDateString
+        self.recoveryPlanStartDate = recoveryPlanStartDate
     }
 }

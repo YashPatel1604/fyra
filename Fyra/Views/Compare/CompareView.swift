@@ -20,11 +20,15 @@ struct CompareView: View {
     @State private var showCompareNudge = false
     @State private var lightingDiffers = false
     @State private var showTimelapseSheet = false
+    @State private var showInsights = false
 
     private var settings: UserSettings? { settingsList.first }
     private var weightUnit: WeightUnit { settings?.weightUnit ?? .lb }
     private var hideWeightDelta: Bool {
         (settings?.hideWeightDeltaInCompare ?? false) || (settings?.photoFirstMode ?? false)
+    }
+    private var hasCompareInsights: Bool {
+        showCompareNudge || !(settings?.whyStarted.isEmpty ?? true)
     }
     private var presetService: ComparePresetService {
         ComparePresetService(checkIns: allCheckIns, baselineCheckInID: settings?.baselineCheckInID)
@@ -36,11 +40,8 @@ struct CompareView: View {
                 VStack(spacing: 0) {
                     header
                     VStack(spacing: 20) {
-                        if !(settings?.whyStarted.isEmpty ?? true) {
-                            whyStartedCard
-                        }
-                        if showCompareNudge {
-                            compareNudgeBanner
+                        if hasCompareInsights {
+                            compareInsightsCard
                         }
                         presetButtons
                         timelapseCard
@@ -69,6 +70,9 @@ struct CompareView: View {
             .onAppear {
                 recordCompareOpen()
                 updateCompareNudge()
+                if showCompareNudge {
+                    showInsights = true
+                }
             }
             .onChange(of: fromCheckIn) { _, _ in updateLightingDiffers() }
             .onChange(of: toCheckIn) { _, _ in updateLightingDiffers() }
@@ -103,29 +107,6 @@ struct CompareView: View {
         showCompareNudge = false
     }
 
-    private var compareNudgeBanner: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "sparkles")
-                .font(.body.weight(.semibold))
-                .foregroundStyle(Color.black)
-            Text("Progress shows best over weeks")
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(Color.black)
-            Spacer()
-            Button {
-                dismissCompareNudge()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(Color.black.opacity(0.6))
-            }
-        }
-        .padding(18)
-        .background(NeonTheme.accent)
-        .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerLarge, style: .continuous))
-        .shadow(color: NeonTheme.accent.opacity(0.3), radius: 16, x: 0, y: 8)
-    }
-
     private func updateLightingDiffers() {
         guard let from = fromCheckIn, let to = toCheckIn else {
             lightingDiffers = false
@@ -145,30 +126,71 @@ struct CompareView: View {
             .frame(maxWidth: .infinity, alignment: .center)
     }
 
-    private var whyStartedCard: some View {
-        Group {
-            if let why = settings?.whyStarted, !why.isEmpty {
-                HStack(alignment: .top, spacing: 12) {
-                    Text("💪")
-                        .font(.title3)
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Why You Started")
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(NeonTheme.accent)
-                        Text(why)
-                            .font(.subheadline)
-                            .foregroundStyle(NeonTheme.textSecondary)
+    private var compareInsightsCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            DisclosureGroup(isExpanded: $showInsights) {
+                VStack(spacing: 10) {
+                    if showCompareNudge {
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: "sparkles")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(NeonTheme.accent)
+                            Text("Progress comparisons are clearer across multi-week gaps.")
+                                .font(.subheadline)
+                                .foregroundStyle(NeonTheme.textSecondary)
+                            Spacer(minLength: 8)
+                            Button {
+                                dismissCompareNudge()
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(NeonTheme.textTertiary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(14)
+                        .background(NeonTheme.surfaceAlt)
+                        .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
+                    }
+
+                    if let why = settings?.whyStarted, !why.isEmpty {
+                        HStack(alignment: .top, spacing: 12) {
+                            Text("💪")
+                                .font(.title3)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Why You Started")
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(NeonTheme.textPrimary)
+                                Text(why)
+                                    .font(.subheadline)
+                                    .foregroundStyle(NeonTheme.textSecondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(14)
+                        .background(NeonTheme.surfaceAlt)
+                        .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
-                .neonCard(
-                    background: NeonTheme.surface,
-                    border: NeonTheme.accent.opacity(0.3),
-                    shadowColor: NeonTheme.accent.opacity(0.2)
-                )
+                .padding(.top, 6)
+            } label: {
+                HStack(spacing: 10) {
+                    NeonIconBadge(systemName: "lightbulb", size: 38)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Insights")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(NeonTheme.textPrimary)
+                        Text("Quick context before you compare")
+                            .font(.caption)
+                            .foregroundStyle(NeonTheme.textTertiary)
+                    }
+                    Spacer()
+                }
             }
+            .tint(NeonTheme.textSecondary)
         }
+        .padding(18)
+        .neonCard()
     }
 
     private var presetButtons: some View {
@@ -176,24 +198,41 @@ struct CompareView: View {
             Text("Quick Compare")
                 .font(.headline.weight(.bold))
                 .foregroundStyle(NeonTheme.textPrimary)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
-                Button("First vs Latest") { applyPreset { presetService.firstVsLatest() } }
-                    .buttonStyle(NeonChipStyle())
-                Button("30 days vs Today") { applyPreset { presetService.todayVs30DaysAgo() } }
-                    .buttonStyle(NeonChipStyle())
-                Button("Month start vs end") { applyPreset { presetService.thisMonthStartVsEnd() } }
-                    .buttonStyle(NeonChipStyle())
-                Button("Week start vs end") { applyPreset { presetService.thisWeekStartVsEnd() } }
-                    .buttonStyle(NeonChipStyle())
-                Button("Best visual change this month") {
-                    applyPreset { presetService.bestVisualChangeThisMonth(pose: selectedPose) }
-                }
-                .buttonStyle(NeonChipStyle())
-                if settings?.baselineCheckInID != nil {
-                    Button("Baseline vs Today") {
-                        applyPreset { presetService.baselineVsToday(pose: selectedPose) }
+            Grid(horizontalSpacing: 10, verticalSpacing: 10) {
+                GridRow {
+                    presetChip("First vs Latest") {
+                        applyPreset { presetService.firstVsLatest() }
                     }
-                    .buttonStyle(NeonChipStyle(highlight: true))
+                    presetChip("30d vs Today") {
+                        applyPreset { presetService.todayVs30DaysAgo() }
+                    }
+                }
+
+                GridRow {
+                    presetChip("Month start/end") {
+                        applyPreset { presetService.thisMonthStartVsEnd() }
+                    }
+                    presetChip("Week start/end") {
+                        applyPreset { presetService.thisWeekStartVsEnd() }
+                    }
+                }
+
+                if settings?.baselineCheckInID != nil {
+                    GridRow {
+                        presetChip("Best visual (month)") {
+                            applyPreset { presetService.bestVisualChangeThisMonth(pose: selectedPose) }
+                        }
+                        presetChip("Baseline vs Today", highlight: true) {
+                            applyPreset { presetService.baselineVsToday(pose: selectedPose) }
+                        }
+                    }
+                } else {
+                    GridRow {
+                        presetChip("Best visual (month)") {
+                            applyPreset { presetService.bestVisualChangeThisMonth(pose: selectedPose) }
+                        }
+                        .gridCellColumns(2)
+                    }
                 }
             }
         }
@@ -219,7 +258,7 @@ struct CompareView: View {
             } label: {
                 Text("Create Timelapse")
                     .font(.subheadline.weight(.bold))
-                    .foregroundStyle(Color.black)
+                    .foregroundStyle(NeonTheme.textPrimary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(NeonTheme.surfaceAlt)
@@ -233,7 +272,7 @@ struct CompareView: View {
         .padding(20)
         .background(NeonTheme.accent)
         .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerLarge, style: .continuous))
-        .shadow(color: NeonTheme.accent.opacity(0.3), radius: 16, x: 0, y: 8)
+        .shadow(color: NeonTheme.accent.opacity(0.2), radius: 10, x: 0, y: 4)
     }
 
     private func applyPreset(_ result: () -> (from: CheckIn, to: CheckIn)?) {
@@ -241,6 +280,17 @@ struct CompareView: View {
             fromCheckIn = from
             toCheckIn = to
         }
+    }
+
+    private func presetChip(_ title: String, highlight: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(NeonChipStyle(highlight: highlight))
     }
 
     private var posePicker: some View {
@@ -477,6 +527,7 @@ private struct NeonChipStyle: ButtonStyle {
             .foregroundStyle(highlight ? Color.black : NeonTheme.textSecondary)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, minHeight: 48)
             .background(
                 Capsule()
                     .fill(highlight ? NeonTheme.accent : NeonTheme.surfaceAlt)

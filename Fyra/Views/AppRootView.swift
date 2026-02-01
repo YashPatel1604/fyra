@@ -64,6 +64,18 @@ struct AppRootView: View {
                         modelContext: modelContext
                     )
                     try? modelContext.save()
+                    if settings.notificationRemindersEnabled {
+                        Task { @MainActor in
+                            let ok = await ReminderNotificationService.syncReminderNotifications(
+                                enabled: true,
+                                reminderTime: settings.reminderTime
+                            )
+                            if !ok {
+                                settings.notificationRemindersEnabled = false
+                                try? modelContext.save()
+                            }
+                        }
+                    }
                 }
             }
 

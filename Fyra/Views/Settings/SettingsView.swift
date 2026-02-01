@@ -13,6 +13,7 @@ struct SettingsView: View {
     @Query(sort: \ProgressPeriod.startDate, order: .forward) private var periods: [ProgressPeriod]
 
     @State private var showExportCompareSheet = false
+    @State private var permissionAlertMessage: String?
 
     private var settings: UserSettings? { settingsList.first }
     private var weightUnit: WeightUnit { settings?.weightUnit ?? .lb }
@@ -28,6 +29,8 @@ struct SettingsView: View {
                             exportCard(settings: settings)
                             weightUnitCard(settings: settings)
                             appearanceCard(settings: settings)
+                            reminderSettingsCard(settings: settings)
+                            healthSyncCard(settings: settings)
                             photoSettingsCard(settings: settings)
                             compareSettingsCard(settings: settings)
                             goalCard(settings: settings)
@@ -62,6 +65,14 @@ struct SettingsView: View {
                         }
                     }
                 )
+            }
+            .alert("Permission Required", isPresented: Binding(
+                get: { permissionAlertMessage != nil },
+                set: { if !$0 { permissionAlertMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) { permissionAlertMessage = nil }
+            } message: {
+                Text(permissionAlertMessage ?? "")
             }
         }
     }
@@ -213,6 +224,165 @@ struct SettingsView: View {
         .neonCard()
     }
 
+    private func reminderSettingsCard(settings: UserSettings) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                NeonIconBadge(systemName: "bell", size: 48)
+                Text("Smart Reminders")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(NeonTheme.textPrimary)
+            }
+
+            HStack {
+                Text("Daily reminder notification")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(NeonTheme.textPrimary)
+                Spacer()
+                NeonToggle(isOn: Binding(
+                    get: { settings.notificationRemindersEnabled },
+                    set: { newValue in
+                        settings.notificationRemindersEnabled = newValue
+                        if newValue, settings.reminderTime == nil {
+                            settings.reminderTime = Date()
+                        }
+                        try? modelContext.save()
+                        Task { @MainActor in
+                            let ok = await ReminderNotificationService.syncReminderNotifications(
+                                enabled: newValue,
+                                reminderTime: settings.reminderTime
+                            )
+                            if !ok {
+                                settings.notificationRemindersEnabled = false
+                                try? modelContext.save()
+                                permissionAlertMessage = "Please allow notifications in iOS Settings to enable daily reminders."
+                            }
+                        }
+                    }
+                ))
+            }
+            .padding(14)
+            .background(NeonTheme.surfaceAlt)
+            .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                    .stroke(NeonTheme.borderStrong, lineWidth: 1)
+            )
+
+            DatePicker(
+                "Reminder time",
+                selection: Binding(
+                    get: { settings.reminderTime ?? Date() },
+                    set: { newValue in
+                        settings.reminderTime = newValue
+                        try? modelContext.save()
+                        if settings.notificationRemindersEnabled {
+                            Task { @MainActor in
+                                _ = await ReminderNotificationService.syncReminderNotifications(
+                                    enabled: true,
+                                    reminderTime: newValue
+                                )
+                            }
+                        }
+                    }
+                ),
+                displayedComponents: .hourAndMinute
+            )
+            .disabled(!settings.notificationRemindersEnabled)
+            .foregroundStyle(NeonTheme.textPrimary)
+            .padding(14)
+            .background(NeonTheme.surfaceAlt)
+            .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                    .stroke(NeonTheme.borderStrong, lineWidth: 1)
+            )
+
+            HStack {
+                Text("In-app adaptive nudges")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(NeonTheme.textPrimary)
+                Spacer()
+                NeonToggle(isOn: Binding(
+                    get: { settings.smartRemindersEnabled },
+                    set: { newValue in
+                        settings.smartRemindersEnabled = newValue
+                        try? modelContext.save()
+                    }
+                ))
+            }
+            .padding(14)
+            .background(NeonTheme.surfaceAlt)
+            .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                    .stroke(NeonTheme.borderStrong, lineWidth: 1)
+            )
+        }
+        .padding(20)
+        .neonCard()
+    }
+
+    private func healthSyncCard(settings: UserSettings) -> some View {
+        let isHealthAvailable = HealthSyncService.isAvailable
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                NeonIconBadge(systemName: "heart.text.square", size: 48)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Apple Health")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(NeonTheme.textPrimary)
+                    Text("Write saved weight entries to Health")
+                        .font(.caption)
+                        .foregroundStyle(NeonTheme.textTertiary)
+                }
+            }
+
+            HStack {
+                Text("Sync weight to Apple Health")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(NeonTheme.textPrimary)
+                Spacer()
+                NeonToggle(isOn: Binding(
+                    get: { settings.appleHealthSyncEnabled },
+                    set: { newValue in
+                        if !newValue {
+                            settings.appleHealthSyncEnabled = false
+                            try? modelContext.save()
+                            return
+                        }
+                        Task { @MainActor in
+                            let authorized = await HealthSyncService.requestWriteAccess()
+                            settings.appleHealthSyncEnabled = authorized
+                            try? modelContext.save()
+                            if !authorized {
+                                permissionAlertMessage = "Please allow Health access in iOS Settings to sync weight."
+                            }
+                            if authorized {
+                                await syncAllWeightsToHealth(settings: settings)
+                            }
+                        }
+                    }
+                ))
+            }
+            .disabled(!isHealthAvailable)
+            .padding(14)
+            .background(NeonTheme.surfaceAlt)
+            .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                    .stroke(NeonTheme.borderStrong, lineWidth: 1)
+            )
+
+            if !isHealthAvailable {
+                Text("Apple Health is not available on this device.")
+                    .font(.caption)
+                    .foregroundStyle(NeonTheme.textTertiary)
+            }
+        }
+        .padding(20)
+        .neonCard()
+    }
+
     private func photoSettingsCard(settings: UserSettings) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
@@ -239,6 +409,27 @@ struct SettingsView: View {
                 Text("Show photos in timeline instead of weight")
                     .font(.caption)
                     .foregroundStyle(NeonTheme.textTertiary)
+            }
+            .padding(14)
+            .background(NeonTheme.surfaceAlt)
+            .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
+            .overlay(
+                    RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                        .stroke(NeonTheme.borderStrong, lineWidth: 1)
+            )
+
+            HStack {
+                Text("Photo alignment assist")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(NeonTheme.textPrimary)
+                Spacer()
+                NeonToggle(isOn: Binding(
+                    get: { settings.alignmentAssistEnabled },
+                    set: { newValue in
+                        settings.alignmentAssistEnabled = newValue
+                        try? modelContext.save()
+                    }
+                ))
             }
             .padding(14)
             .background(NeonTheme.surfaceAlt)
@@ -563,6 +754,14 @@ struct SettingsView: View {
             s.lastExportDate = Date()
             try? modelContext.save()
         }
+    }
+
+    @MainActor
+    private func syncAllWeightsToHealth(settings: UserSettings) async {
+        for checkIn in allCheckIns where checkIn.weight != nil {
+            _ = await HealthSyncService.syncWeightIfNeeded(checkIn: checkIn, settings: settings)
+        }
+        try? modelContext.save()
     }
 }
 

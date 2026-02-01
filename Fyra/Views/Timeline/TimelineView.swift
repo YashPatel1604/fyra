@@ -9,8 +9,10 @@ import SwiftData
 struct TimelineView: View {
     @Query(sort: \CheckIn.date, order: .reverse) private var checkIns: [CheckIn]
     @Query private var settingsList: [UserSettings]
+    @Query(sort: \ProgressPeriod.startDate, order: .forward) private var periods: [ProgressPeriod]
     @State private var showDailyPoints: Bool = false
     @State private var selectedRange: WeightGraphRange = .thirtyDays
+    @State private var showInsights = false
 
     private var settings: UserSettings? { settingsList.first }
     private var weightUnit: WeightUnit { settings?.weightUnit ?? .lb }
@@ -68,6 +70,29 @@ struct TimelineView: View {
         let days = Set(checkIns.filter { $0.hasAnyContent && $0.date >= start && $0.date <= end }.map { calendar.startOfDay(for: $0.date) })
         return days.count
     }
+    private var streakStats: StreakStats {
+        ProgressSupportService.streakStats(checkIns: checkIns)
+    }
+    private var plateauMessage: String? {
+        ProgressSupportService.plateauMessage(
+            checkIns: checkIns,
+            goalType: settings?.goalType ?? .none,
+            unit: weightUnit
+        )
+    }
+    private var weeklySummary: WeeklySummary {
+        ProgressSupportService.weeklySummary(checkIns: checkIns, unit: weightUnit)
+    }
+    private var milestoneStatus: MilestoneStatus? {
+        guard let settings else { return nil }
+        let periodStart = ProgressPeriodService.activePeriod(settings: settings, periods: periods)?.startDate
+        return ProgressSupportService.milestoneStatus(
+            checkIns: checkIns,
+            settings: settings,
+            periodStartDate: periodStart,
+            unit: weightUnit
+        )
+    }
 
     private var measurementNudgeMessage: String? {
         let withWaist: [(date: Date, waist: Double)] = checkIns
@@ -92,6 +117,9 @@ struct TimelineView: View {
             goalType: settings?.goalType ?? .none,
             unit: weightUnit
         )
+    }
+    private var hasInsightsContent: Bool {
+        milestoneStatus != nil || weeklySummary.loggedDays > 0 || measurementNudgeMessage != nil || paceContextMessage != nil || plateauMessage != nil
     }
 
     var body: some View {
@@ -148,8 +176,8 @@ struct TimelineView: View {
                 showDailyPoints: $showDailyPoints
             )
             statsGrid
-            if measurementNudgeMessage != nil || paceContextMessage != nil {
-                insightsCard
+            if hasInsightsContent {
+                insightsPanelCard
             }
             recentCheckIns
         }
@@ -210,6 +238,16 @@ struct TimelineView: View {
                 title: "Consistency",
                 value: consistencyPercentText ?? "—"
             )
+            statCard(
+                icon: "flame.fill",
+                title: "Current Streak",
+                value: "\(streakStats.current) days"
+            )
+            statCard(
+                icon: "trophy.fill",
+                title: "Best Streak",
+                value: "\(streakStats.best) days"
+            )
         }
     }
 
@@ -228,6 +266,127 @@ struct TimelineView: View {
         .neonCard()
     }
 
+    private var insightsPanelCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            DisclosureGroup(isExpanded: $showInsights) {
+                VStack(spacing: 14) {
+                    if let milestoneStatus {
+                        milestoneCard(status: milestoneStatus)
+                    }
+                    weeklySummaryCard
+                    if measurementNudgeMessage != nil || paceContextMessage != nil || plateauMessage != nil {
+                        insightsCard
+                    }
+                }
+                .padding(.top, 6)
+            } label: {
+                HStack(spacing: 10) {
+                    NeonIconBadge(systemName: "lightbulb", size: 38)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Insights")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(NeonTheme.textPrimary)
+                        Text("Milestones, weekly summary, and guidance")
+                            .font(.caption)
+                            .foregroundStyle(NeonTheme.textTertiary)
+                    }
+                    Spacer()
+                }
+            }
+            .tint(NeonTheme.textSecondary)
+        }
+        .padding(18)
+        .neonCard()
+    }
+
+    private func milestoneCard(status: MilestoneStatus) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                NeonIconBadge(systemName: "flag.checkered", size: 40)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Milestone Timeline")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(NeonTheme.textPrimary)
+                    Text("Progress in current goal period")
+                        .font(.caption)
+                        .foregroundStyle(NeonTheme.textTertiary)
+                }
+            }
+
+            ProgressView(value: status.progress)
+                .tint(NeonTheme.accent)
+
+            HStack {
+                Text("Now: \(formatWeight(status.currentWeight)) \(weightUnit.rawValue)")
+                    .font(.caption)
+                    .foregroundStyle(NeonTheme.textSecondary)
+                Spacer()
+                Text("Next: \(formatWeight(status.nextMilestoneWeight))")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(NeonTheme.accent)
+            }
+
+            if let days = status.daysToNextMilestone {
+                Text("At this pace, next milestone is about \(days) days away.")
+                    .font(.caption)
+                    .foregroundStyle(NeonTheme.textTertiary)
+            }
+        }
+        .padding(18)
+        .neonCard(
+            background: NeonTheme.surface,
+            border: NeonTheme.accent.opacity(0.28),
+            shadowColor: NeonTheme.accent.opacity(0.15)
+        )
+    }
+
+    private var weeklySummaryCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                NeonIconBadge(systemName: "calendar.badge.clock", size: 40)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Weekly Summary")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(NeonTheme.textPrimary)
+                    Text("Last 7 days")
+                        .font(.caption)
+                        .foregroundStyle(NeonTheme.textTertiary)
+                }
+            }
+            HStack(spacing: 8) {
+                summaryPill(title: "Logged", value: "\(weeklySummary.loggedDays)/7")
+                summaryPill(title: "Photos", value: "\(weeklySummary.photoDays)")
+                summaryPill(title: "Wins", value: "\(weeklySummary.winsLogged)")
+            }
+            if let change = weeklySummary.trendChange {
+                Text("Trend change: \(formatSignedChange(change)) \(weightUnit.rawValue)")
+                    .font(.caption)
+                    .foregroundStyle(NeonTheme.textSecondary)
+            }
+        }
+        .padding(18)
+        .neonCard()
+    }
+
+    private func summaryPill(title: String, value: String) -> some View {
+        VStack(spacing: 2) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(NeonTheme.textTertiary)
+            Text(value)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(NeonTheme.textPrimary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(NeonTheme.surfaceAlt)
+        .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerSmall, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: NeonTheme.cornerSmall, style: .continuous)
+                .stroke(NeonTheme.borderStrong, lineWidth: 1)
+        )
+    }
+
     private var insightsCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 12) {
@@ -240,6 +399,11 @@ struct TimelineView: View {
                             .foregroundStyle(NeonTheme.textPrimary)
                     }
                     if let msg = paceContextMessage {
+                        Text(msg)
+                            .font(.caption)
+                            .foregroundStyle(NeonTheme.textSecondary)
+                    }
+                    if let msg = plateauMessage {
                         Text(msg)
                             .font(.caption)
                             .foregroundStyle(NeonTheme.textSecondary)
@@ -288,6 +452,13 @@ struct TimelineView: View {
         formatter.minimumFractionDigits = 0
         formatter.maximumFractionDigits = 1
         formatter.positivePrefix = "+"
+        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+    }
+
+    private func formatWeight(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 1
         return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 }
