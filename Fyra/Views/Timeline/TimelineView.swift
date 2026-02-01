@@ -7,16 +7,51 @@ import SwiftUI
 import SwiftData
 
 struct TimelineView: View {
-    @Environment(\.modelContext) private var modelContext
     @Query(sort: \CheckIn.date, order: .reverse) private var checkIns: [CheckIn]
     @Query private var settingsList: [UserSettings]
     @State private var showDailyPoints: Bool = false
+    @State private var selectedRange: WeightGraphRange = .thirtyDays
 
     private var settings: UserSettings? { settingsList.first }
     private var weightUnit: WeightUnit { settings?.weightUnit ?? .lb }
     private var photoFirstMode: Bool { settings?.photoFirstMode ?? false }
     private var weightTrendService: WeightTrendService {
         WeightTrendService(checkIns: checkIns.reversed(), unit: weightUnit)
+    }
+    private var rangeWeightedCheckIns: [CheckIn] {
+        let end = Date()
+        let start = selectedRange.startDate(ending: end) ?? Date.distantPast
+        return checkIns.filter { $0.weight != nil && $0.date >= start && $0.date <= end }
+    }
+    private var rangeTrendService: WeightTrendService {
+        WeightTrendService(checkIns: rangeWeightedCheckIns, unit: weightUnit)
+    }
+    private var trendPoints: [WeightGraphPoint] {
+        guard rangeTrendService.count > 0 else { return [] }
+        return (0..<rangeTrendService.count).compactMap { idx in
+            guard let date = rangeTrendService.date(atIndex: idx),
+                  let trend = rangeTrendService.trend(atIndex: idx) else { return nil }
+            return WeightGraphPoint(date: date, value: trend)
+        }
+    }
+    private var rawPoints: [WeightGraphPoint] {
+        guard rangeTrendService.count > 0 else { return [] }
+        return (0..<rangeTrendService.count).compactMap { idx in
+            guard let date = rangeTrendService.date(atIndex: idx),
+                  let raw = rangeTrendService.rawWeight(atIndex: idx) else { return nil }
+            return WeightGraphPoint(date: date, value: raw)
+        }
+    }
+    private var hasEnoughWeightData: Bool {
+        trendPoints.count >= 2
+    }
+    private var weeklyRateText: String? {
+        guard let rate = rangeTrendService.weeklyRatePerWeek(unit: weightUnit)?.value else { return nil }
+        return WeightTrendService.formatWeeklyRate(rate, unit: weightUnit)
+    }
+    private var trendChangeText: String? {
+        guard let change = rangeTrendService.trendChange() else { return nil }
+        return "\(formatSignedChange(change)) \(weightUnit.rawValue)"
     }
     private var uniqueDaysLoggedThisMonth: Int {
         let calendar = Calendar.current
@@ -26,27 +61,12 @@ struct TimelineView: View {
         let days = Set(checkIns.filter { $0.hasAnyContent && $0.date >= startOfMonth && $0.date <= endOfMonth }.map { calendar.startOfDay(for: $0.date) })
         return days.count
     }
-
-    private var monthlyRecapCard: some View {
+    private var consistencyLast7Days: Int {
         let calendar = Calendar.current
-        let now = Date()
-        let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: now)) ?? now
-        let inMonth = checkIns.filter { $0.date >= startOfMonth && $0.date <= now }
-        let trendRate = weightTrendService.weeklyRatePerWeek(unit: weightUnit)?.value
-        return VStack(alignment: .leading, spacing: 10) {
-            if let rate = trendRate {
-                Text("Month-to-date trend: \(WeightTrendService.formatWeeklyRate(rate, unit: weightUnit))")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            if inMonth.count >= 2 {
-                Text("Compare first vs latest this month in the Compare tab.")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 6)
+        let end = Date()
+        let start = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: end)) ?? end
+        let days = Set(checkIns.filter { $0.hasAnyContent && $0.date >= start && $0.date <= end }.map { calendar.startOfDay(for: $0.date) })
+        return days.count
     }
 
     private var measurementNudgeMessage: String? {
@@ -85,16 +105,6 @@ struct TimelineView: View {
             }
             .navigationTitle("Timeline")
             .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    if !photoFirstMode {
-                        Button(showDailyPoints ? "Show trend" : "Show daily points") {
-                            showDailyPoints.toggle()
-                        }
-                        .font(.caption)
-                    }
-                }
-            }
         }
     }
 
@@ -110,49 +120,74 @@ struct TimelineView: View {
     private var listContent: some View {
         List {
             Section {
-                VStack(spacing: 4) {
+                WeightGraphView(
+                    trendPoints: trendPoints,
+                    rawPoints: rawPoints,
+                    weeklyRateText: weeklyRateText,
+                    hasEnoughData: hasEnoughWeightData,
+                    selectedRange: $selectedRange,
+                    showDailyPoints: $showDailyPoints
+                )
+            }
+            .listRowBackground(Color(.secondarySystemGroupedBackground))
+
+            Section("Metrics") {
+                if let trendChangeText {
                     HStack {
-                        Text("Days logged this month")
+                        Text("\(selectedRange.metricLabel) trend change")
                             .font(.subheadline)
                         Spacer()
-                        Text("\(uniqueDaysLoggedThisMonth)")
-                            .font(.subheadline.weight(.semibold))
+                        Text(trendChangeText)
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
-                    if let rate = weightTrendService.weeklyRatePerWeek(unit: weightUnit) {
-                        HStack {
-                            Text("Trend")
-                                .font(.subheadline)
-                            Spacer()
-                            Text(WeightTrendService.formatWeeklyRate(rate.value, unit: weightUnit))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
+                }
+                if let weeklyRateText {
+                    HStack {
+                        Text("Weekly rate")
+                            .font(.subheadline)
+                        Spacer()
+                        Text(weeklyRateText)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                HStack {
+                    Text("Days logged this month")
+                        .font(.subheadline)
+                    Spacer()
+                    Text("\(uniqueDaysLoggedThisMonth)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+                if consistencyLast7Days > 0 {
+                    HStack {
+                        Text("Consistency (last 7 days)")
+                            .font(.subheadline)
+                        Spacer()
+                        Text("\(consistencyLast7Days)/7")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .listRowBackground(Color(.secondarySystemGroupedBackground))
+
+            if measurementNudgeMessage != nil || paceContextMessage != nil {
+                Section("Notes") {
+                    if let msg = measurementNudgeMessage {
+                        Text(msg)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let msg = paceContextMessage {
+                        Text(msg)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 .listRowBackground(Color(.secondarySystemGroupedBackground))
             }
-            Section {
-                monthlyRecapCard
-                if let msg = measurementNudgeMessage {
-                    Text(msg)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                if let msg = paceContextMessage {
-                    Text(msg)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            } header: {
-                Text("This month")
-            } footer: {
-                if uniqueDaysLoggedThisMonth > 0 {
-                    Text("Focus on the trend, not daily noise.")
-                        .font(.caption2)
-                }
-            }
-            .listRowBackground(Color(.secondarySystemGroupedBackground))
 
             ForEach(checkIns) { checkIn in
                 NavigationLink {
@@ -171,6 +206,14 @@ struct TimelineView: View {
             }
         }
         .listStyle(.insetGrouped)
+    }
+
+    private func formatSignedChange(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 1
+        formatter.positivePrefix = "+"
+        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 }
 
@@ -257,5 +300,5 @@ struct TimelineRowView: View {
 
 #Preview {
     TimelineView()
-        .modelContainer(for: [CheckIn.self, UserSettings.self], inMemory: true)
+        .modelContainer(for: [CheckIn.self, UserSettings.self, ProgressPeriod.self], inMemory: true)
 }

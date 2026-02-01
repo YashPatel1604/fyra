@@ -50,6 +50,16 @@ final class WeightTrendServiceTests: XCTestCase {
         XCTAssert(rate!.value > 0)
     }
 
+    func testTrendChange() {
+        let base = calendar.startOfDay(for: Date())
+        let c1 = CheckIn(date: base, weight: 70)
+        let c2 = CheckIn(date: calendar.date(byAdding: .day, value: 1, to: base)!, weight: 71)
+        let c3 = CheckIn(date: calendar.date(byAdding: .day, value: 2, to: base)!, weight: 72)
+        let service = WeightTrendService(checkIns: [c1, c2, c3], unit: .kg)
+        let change = service.trendChange()
+        XCTAssertEqual(change, 1.0)
+    }
+
     func testIndexForDay() {
         let d1 = calendar.startOfDay(for: Date())
         let d2 = calendar.date(byAdding: .day, value: 1, to: d1)!

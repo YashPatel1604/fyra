@@ -11,6 +11,20 @@ enum WeightUnit: String, Codable, CaseIterable {
     case kg
 }
 
+enum AppearanceMode: String, Codable, CaseIterable {
+    case system
+    case light
+    case dark
+
+    var displayName: String {
+        switch self {
+        case .system: return "System"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        }
+    }
+}
+
 enum Pose: String, Codable, CaseIterable {
     case front
     case side

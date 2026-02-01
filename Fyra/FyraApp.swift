@@ -9,7 +9,7 @@ import SwiftData
 @main
 struct FyraApp: App {
     var sharedModelContainer: ModelContainer = {
-        let schema = Schema([CheckIn.self, UserSettings.self])
+        let schema = Schema([CheckIn.self, UserSettings.self, ProgressPeriod.self])
         let config = ModelConfiguration(isStoredInMemoryOnly: false)
         do {
             return try ModelContainer(for: schema, configurations: [config])

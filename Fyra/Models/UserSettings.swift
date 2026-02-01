@@ -14,6 +14,7 @@ final class UserSettings {
     var preferredPoseSingle: Pose
     var reminderTime: Date?
     var goalType: GoalType
+    var appearanceMode: AppearanceMode?
     /// When true, hide weight on Check-In main surface (use "Add weight" to log).
     var photoFirstMode: Bool = false
     /// When true, Compare view hides weight delta.
@@ -30,6 +31,8 @@ final class UserSettings {
     var fluctuationBannerDismissedDateStrings: [String] = []
     /// One check-in marked as baseline (ID stored here; only one baseline).
     var baselineCheckInID: UUID?
+    /// Active progress period (goal phase).
+    var activeProgressPeriodID: UUID?
     /// Last time user exported data (optional display).
     var lastExportDate: Date?
     /// When return (welcome-back) banner was dismissed; show again after 14 days.
@@ -48,6 +51,7 @@ final class UserSettings {
         preferredPoseSingle: Pose = .front,
         reminderTime: Date? = nil,
         goalType: GoalType = .none,
+        appearanceMode: AppearanceMode? = .system,
         photoFirstMode: Bool = false,
         hideWeightDeltaInCompare: Bool = false,
         goalMinWeight: Double? = nil,
@@ -57,6 +61,7 @@ final class UserSettings {
         whyStarted: String = "",
         fluctuationBannerDismissedDateStrings: [String] = [],
         baselineCheckInID: UUID? = nil,
+        activeProgressPeriodID: UUID? = nil,
         lastExportDate: Date? = nil,
         returnBannerDismissedAt: Date? = nil,
         compareOpensDateString: String = "",
@@ -69,6 +74,7 @@ final class UserSettings {
         self.preferredPoseSingle = preferredPoseSingle
         self.reminderTime = reminderTime
         self.goalType = goalType
+        self.appearanceMode = appearanceMode
         self.photoFirstMode = photoFirstMode
         self.hideWeightDeltaInCompare = hideWeightDeltaInCompare
         self.goalMinWeight = goalMinWeight
@@ -78,6 +84,7 @@ final class UserSettings {
         self.whyStarted = whyStarted
         self.fluctuationBannerDismissedDateStrings = fluctuationBannerDismissedDateStrings
         self.baselineCheckInID = baselineCheckInID
+        self.activeProgressPeriodID = activeProgressPeriodID
         self.lastExportDate = lastExportDate
         self.returnBannerDismissedAt = returnBannerDismissedAt
         self.compareOpensDateString = compareOpensDateString

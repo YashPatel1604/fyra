@@ -9,7 +9,16 @@ import SwiftData
 struct AppRootView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var settingsList: [UserSettings]
+    @Query(sort: \ProgressPeriod.startDate, order: .forward) private var periods: [ProgressPeriod]
     @State private var selectedTab = 0
+
+    private var preferredColorScheme: ColorScheme? {
+        switch settingsList.first?.appearanceMode ?? .system {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -38,9 +47,18 @@ struct AppRootView: View {
                 .tag(3)
         }
         .tint(.accentColor)
+        .preferredColorScheme(preferredColorScheme)
         .onAppear {
             if settingsList.isEmpty {
                 modelContext.insert(UserSettings())
+                try? modelContext.save()
+            }
+            if let settings = settingsList.first {
+                _ = ProgressPeriodService.ensureActivePeriodIfNeeded(
+                    settings: settings,
+                    periods: periods,
+                    modelContext: modelContext
+                )
                 try? modelContext.save()
             }
         }
@@ -49,5 +67,5 @@ struct AppRootView: View {
 
 #Preview {
     AppRootView()
-        .modelContainer(for: [CheckIn.self, UserSettings.self], inMemory: true)
+        .modelContainer(for: [CheckIn.self, UserSettings.self, ProgressPeriod.self], inMemory: true)
 }

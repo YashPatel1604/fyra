@@ -10,6 +10,7 @@ struct CompareView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \CheckIn.date, order: .forward) private var allCheckIns: [CheckIn]
     @Query private var settingsList: [UserSettings]
+    @Query(sort: \ProgressPeriod.startDate, order: .forward) private var periods: [ProgressPeriod]
 
     @State private var fromCheckIn: CheckIn?
     @State private var toCheckIn: CheckIn?
@@ -18,6 +19,7 @@ struct CompareView: View {
     @State private var showToPicker = false
     @State private var showCompareNudge = false
     @State private var lightingDiffers = false
+    @State private var showTimelapseSheet = false
 
     private var settings: UserSettings? { settingsList.first }
     private var weightUnit: WeightUnit { settings?.weightUnit ?? .lb }
@@ -39,6 +41,7 @@ struct CompareView: View {
                         compareNudgeBanner
                     }
                     presetButtons
+                    timelapseCard
                     posePicker
                     if hideWeightDelta {
                         Text("Weight change hidden")
@@ -73,6 +76,9 @@ struct CompareView: View {
             }
             .sheet(isPresented: $showToPicker) {
                 CheckInPickerView(checkIns: allCheckIns, selected: $toCheckIn, weightUnit: weightUnit)
+            }
+            .sheet(isPresented: $showTimelapseSheet) {
+                TimelapseGeneratorView(checkIns: allCheckIns, settings: settings, periods: periods)
             }
         }
     }
@@ -177,6 +183,22 @@ struct CompareView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var timelapseCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            AppTheme.sectionLabel("Progress timelapse")
+            Text("Create a simple video from your progress photos.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Button("Create Timelapse") {
+                showTimelapseSheet = true
+            }
+            .buttonStyle(.bordered)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(AppTheme.cardPadding)
+        .background(AppTheme.cardBackground)
     }
 
     private func applyPreset(_ result: () -> (from: CheckIn, to: CheckIn)?) {
@@ -406,5 +428,5 @@ struct CheckInPickerView: View {
 
 #Preview {
     CompareView()
-        .modelContainer(for: [CheckIn.self, UserSettings.self], inMemory: true)
+        .modelContainer(for: [CheckIn.self, UserSettings.self, ProgressPeriod.self], inMemory: true)
 }

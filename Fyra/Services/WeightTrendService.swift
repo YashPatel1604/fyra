@@ -67,6 +67,14 @@ struct WeightTrendService {
         return weightedEntries[index].date
     }
 
+    /// Trend change from first to last available trend point.
+    func trendChange() -> Double? {
+        guard weightedEntries.count >= 2,
+              let first = trend(atIndex: 0),
+              let last = trend(atIndex: weightedEntries.count - 1) else { return nil }
+        return last - first
+    }
+
     /// Index of the entry matching the given day (same calendar day), or nil.
     func index(forDay date: Date) -> Int? {
         let cal = Calendar.current

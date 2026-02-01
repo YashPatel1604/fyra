@@ -40,14 +40,24 @@ struct InsightService {
         weightTrendService: WeightTrendService?,
         unit: WeightUnit
     ) -> String? {
-        guard checkInsWithWaist.count >= 2,
-              let first = checkInsWithWaist.first,
-              let last = checkInsWithWaist.last else { return nil }
-        let days = Calendar.current.dateComponents([.day], from: first.date, to: last.date).day ?? 0
-        guard days >= 14 else { return nil }
+        guard checkInsWithWaist.count >= 2 else { return nil }
+        let sorted = checkInsWithWaist.sorted { $0.date < $1.date }
+        guard let last = sorted.last else { return nil }
+        let calendar = Calendar.current
+        let minStart = calendar.date(byAdding: .day, value: -30, to: last.date) ?? last.date
+        let maxStart = calendar.date(byAdding: .day, value: -14, to: last.date) ?? last.date
+        let candidates = sorted.filter { $0.date >= minStart && $0.date <= maxStart }
+        guard let first = candidates.first else { return nil }
         let waistChange = last.waist - first.waist
         let weightStable: Bool
-        if let trend = weightTrendService?.latestTrend, let past = weightTrendService?.trend(atIndex: max(0, (weightTrendService?.count ?? 0) - 7)) {
+        if let service = weightTrendService,
+           let lastIdx = service.index(forDay: last.date),
+           let firstIdx = service.index(forDay: first.date),
+           let lastTrend = service.trend(atIndex: lastIdx),
+           let firstTrend = service.trend(atIndex: firstIdx) {
+            weightStable = abs(lastTrend - firstTrend) < (unit == .kg ? 0.5 : 1.0)
+        } else if let trend = weightTrendService?.latestTrend,
+                  let past = weightTrendService?.trend(atIndex: max(0, (weightTrendService?.count ?? 0) - 7)) {
             weightStable = abs(trend - past) < (unit == .kg ? 0.5 : 1.0)
         } else {
             weightStable = true

@@ -10,6 +10,7 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \CheckIn.date, order: .forward) private var allCheckIns: [CheckIn]
     @Query private var settingsList: [UserSettings]
+    @Query(sort: \ProgressPeriod.startDate, order: .forward) private var periods: [ProgressPeriod]
 
     @State private var showExportCompareSheet = false
 
@@ -60,6 +61,18 @@ struct SettingsView: View {
                         .pickerStyle(.segmented)
                     }
 
+                    Section("Appearance") {
+                        Picker("Theme", selection: Binding(
+                            get: { settings.appearanceMode ?? .system },
+                            set: { settings.appearanceMode = $0; try? modelContext.save() }
+                        )) {
+                            ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                                Text(mode.displayName).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                    }
+
                     Section("Photos") {
                         Toggle("Photo-first mode", isOn: Binding(
                             get: { settings.photoFirstMode },
@@ -99,7 +112,7 @@ struct SettingsView: View {
                     Section("Goal (for context only)") {
                         Picker("Goal", selection: Binding(
                             get: { settings.goalType },
-                            set: { settings.goalType = $0; try? modelContext.save() }
+                            set: { newValue in updateGoalSetting { settings.goalType = newValue } }
                         )) {
                             ForEach(GoalType.allCases, id: \.self) { goal in
                                 Text(goal.displayName).tag(goal)
@@ -109,6 +122,21 @@ struct SettingsView: View {
                             goalRangeFields(settings: settings)
                         }
                         paceRangeFields(settings: settings)
+                    }
+
+                    Section("Progress period") {
+                        if let active = ProgressPeriodService.activePeriod(settings: settings, periods: periods) {
+                            Text("Current period started \(formattedDate(active.startDate))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("No active progress period yet.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Button("Start new progress period") {
+                            startNewProgressPeriod()
+                        }
                     }
 
                     Section("Why you started") {
@@ -122,6 +150,16 @@ struct SettingsView: View {
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
+            .onAppear {
+                if let settings {
+                    _ = ProgressPeriodService.ensureActivePeriodIfNeeded(
+                        settings: settings,
+                        periods: periods,
+                        modelContext: modelContext
+                    )
+                    try? modelContext.save()
+                }
+            }
             .sheet(isPresented: $showExportCompareSheet) {
                 ExportCompareImageSheet(
                     checkIns: allCheckIns,
@@ -144,7 +182,7 @@ struct SettingsView: View {
                 Spacer()
                 TextField("Min", value: Binding(
                     get: { settings.goalMinWeight ?? 0 },
-                    set: { v in settings.goalMinWeight = v; try? modelContext.save() }
+                    set: { v in updateGoalSetting { settings.goalMinWeight = v } }
                 ), format: .number)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
@@ -155,7 +193,7 @@ struct SettingsView: View {
                 Spacer()
                 TextField("Max", value: Binding(
                     get: { settings.goalMaxWeight ?? 0 },
-                    set: { v in settings.goalMaxWeight = v; try? modelContext.save() }
+                    set: { v in updateGoalSetting { settings.goalMaxWeight = v } }
                 ), format: .number)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
@@ -171,7 +209,7 @@ struct SettingsView: View {
                 Spacer()
                 TextField("Min", value: Binding(
                     get: { settings.paceMinPerWeek ?? 0 },
-                    set: { v in settings.paceMinPerWeek = v; try? modelContext.save() }
+                    set: { v in updateGoalSetting { settings.paceMinPerWeek = v } }
                 ), format: .number)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
@@ -182,13 +220,35 @@ struct SettingsView: View {
                 Spacer()
                 TextField("Max", value: Binding(
                     get: { settings.paceMaxPerWeek ?? 0 },
-                    set: { v in settings.paceMaxPerWeek = v; try? modelContext.save() }
+                    set: { v in updateGoalSetting { settings.paceMaxPerWeek = v } }
                 ), format: .number)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
                 .frame(width: 80)
             }
         }
+    }
+
+    private func updateGoalSetting(_ update: () -> Void) {
+        guard let settings else { return }
+        update()
+        _ = ProgressPeriodService.handleGoalChange(
+            settings: settings,
+            periods: periods,
+            modelContext: modelContext
+        )
+        try? modelContext.save()
+    }
+
+    private func startNewProgressPeriod() {
+        guard let settings else { return }
+        _ = ProgressPeriodService.startNewPeriod(
+            settings: settings,
+            periods: periods,
+            modelContext: modelContext,
+            closeExisting: true
+        )
+        try? modelContext.save()
     }
 
     private func formattedDate(_ date: Date) -> String {
@@ -288,5 +348,5 @@ struct ExportCompareImageSheet: View {
 
 #Preview {
     SettingsView()
-        .modelContainer(for: [CheckIn.self, UserSettings.self], inMemory: true)
+        .modelContainer(for: [CheckIn.self, UserSettings.self, ProgressPeriod.self], inMemory: true)
 }
