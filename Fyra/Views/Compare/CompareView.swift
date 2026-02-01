@@ -33,37 +33,39 @@ struct CompareView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: AppTheme.sectionSpacing) {
-                    if !(settings?.whyStarted.isEmpty ?? true) {
-                        whyStartedCard
-                    }
-                    if showCompareNudge {
-                        compareNudgeBanner
-                    }
-                    presetButtons
-                    timelapseCard
-                    posePicker
-                    if hideWeightDelta {
-                        Text("Weight change hidden")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
-                    datePickers
-                    if fromCheckIn != nil && toCheckIn != nil {
-                        if lightingDiffers {
-                            lightingDisclaimer
+                VStack(spacing: 0) {
+                    header
+                    VStack(spacing: 20) {
+                        if !(settings?.whyStarted.isEmpty ?? true) {
+                            whyStartedCard
                         }
-                        comparisonContent
-                    } else {
-                        emptyPrompt
+                        if showCompareNudge {
+                            compareNudgeBanner
+                        }
+                        presetButtons
+                        timelapseCard
+                        posePicker
+                        if hideWeightDelta {
+                            Text("Weight change hidden")
+                                .font(.caption)
+                                .foregroundStyle(NeonTheme.textTertiary)
+                        }
+                        datePickers
+                        if fromCheckIn != nil && toCheckIn != nil {
+                            if lightingDiffers {
+                                lightingDisclaimer
+                            }
+                            comparisonContent
+                        } else {
+                            emptyPrompt
+                        }
                     }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 24)
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 24)
             }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Compare")
-            .navigationBarTitleDisplayMode(.large)
+            .background(NeonTheme.background)
+            .toolbar(.hidden, for: .navigationBar)
             .onAppear {
                 recordCompareOpen()
                 updateCompareNudge()
@@ -103,18 +105,25 @@ struct CompareView: View {
 
     private var compareNudgeBanner: some View {
         HStack(alignment: .top, spacing: 12) {
-            Text("Progress shows best over weeks.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Spacer(minLength: 8)
-            Button("Dismiss") {
+            Image(systemName: "sparkles")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(Color.black)
+            Text("Progress shows best over weeks")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(Color.black)
+            Spacer()
+            Button {
                 dismissCompareNudge()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color.black.opacity(0.6))
             }
-            .font(.caption.weight(.medium))
-            .frame(minWidth: AppTheme.minTapTarget, minHeight: AppTheme.minTapTarget)
         }
-        .padding(AppTheme.cardPadding)
-        .background(AppTheme.cardBackground)
+        .padding(18)
+        .background(NeonTheme.accent)
+        .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerLarge, style: .continuous))
+        .shadow(color: NeonTheme.accent.opacity(0.3), radius: 16, x: 0, y: 8)
     }
 
     private func updateLightingDiffers() {
@@ -130,75 +139,97 @@ struct CompareView: View {
     }
 
     private var lightingDisclaimer: some View {
-        Text("Lighting differs — changes may appear stronger or weaker.")
+        Text("✨ Best results with similar lighting")
             .font(.caption)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .foregroundStyle(NeonTheme.textTertiary)
+            .frame(maxWidth: .infinity, alignment: .center)
     }
 
     private var whyStartedCard: some View {
         Group {
             if let why = settings?.whyStarted, !why.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    AppTheme.sectionLabel("Why you started")
-                    Text(why)
-                        .font(.subheadline)
-                        .foregroundStyle(.primary)
+                HStack(alignment: .top, spacing: 12) {
+                    Text("💪")
+                        .font(.title3)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Why You Started")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(NeonTheme.accent)
+                        Text(why)
+                            .font(.subheadline)
+                            .foregroundStyle(NeonTheme.textSecondary)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(AppTheme.cardPadding)
-                .background(AppTheme.cardBackground)
+                .padding(20)
+                .neonCard(
+                    background: NeonTheme.surface,
+                    border: NeonTheme.accent.opacity(0.3),
+                    shadowColor: NeonTheme.accent.opacity(0.2)
+                )
             }
         }
     }
 
     private var presetButtons: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            AppTheme.sectionLabel("Presets")
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 10) {
-                    Button("First vs Latest") { applyPreset { presetService.firstVsLatest() } }
-                        .buttonStyle(.borderedProminent)
-                    Button("30 days vs Today") { applyPreset { presetService.todayVs30DaysAgo() } }
-                        .buttonStyle(.bordered)
-                }
-                HStack(spacing: 10) {
-                    Button("Month start vs end") { applyPreset { presetService.thisMonthStartVsEnd() } }
-                        .buttonStyle(.bordered)
-                    Button("Week start vs end") { applyPreset { presetService.thisWeekStartVsEnd() } }
-                        .buttonStyle(.bordered)
-                }
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Quick Compare")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(NeonTheme.textPrimary)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
+                Button("First vs Latest") { applyPreset { presetService.firstVsLatest() } }
+                    .buttonStyle(NeonChipStyle())
+                Button("30 days vs Today") { applyPreset { presetService.todayVs30DaysAgo() } }
+                    .buttonStyle(NeonChipStyle())
+                Button("Month start vs end") { applyPreset { presetService.thisMonthStartVsEnd() } }
+                    .buttonStyle(NeonChipStyle())
+                Button("Week start vs end") { applyPreset { presetService.thisWeekStartVsEnd() } }
+                    .buttonStyle(NeonChipStyle())
                 Button("Best visual change this month") {
                     applyPreset { presetService.bestVisualChangeThisMonth(pose: selectedPose) }
                 }
-                .buttonStyle(.bordered)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .buttonStyle(NeonChipStyle())
                 if settings?.baselineCheckInID != nil {
                     Button("Baseline vs Today") {
                         applyPreset { presetService.baselineVsToday(pose: selectedPose) }
                     }
-                    .buttonStyle(.borderedProminent)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .buttonStyle(NeonChipStyle(highlight: true))
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .neonCard()
     }
 
     private var timelapseCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            AppTheme.sectionLabel("Progress timelapse")
-            Text("Create a simple video from your progress photos.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Button("Create Timelapse") {
-                showTimelapseSheet = true
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                NeonIconBadge(systemName: "film", size: 48, background: Color.black.opacity(0.1), foreground: .black)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Progress Timelapse")
+                        .font(.headline.weight(.bold))
+                    Text("Animate your transformation")
+                        .font(.caption)
+                        .foregroundStyle(Color.black.opacity(0.7))
+                }
             }
-            .buttonStyle(.bordered)
+            Button {
+                showTimelapseSheet = true
+            } label: {
+                Text("Create Timelapse")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(NeonTheme.accent)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.black)
+                    .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(AppTheme.cardPadding)
-        .background(AppTheme.cardBackground)
+        .padding(20)
+        .background(NeonTheme.accent)
+        .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerLarge, style: .continuous))
+        .shadow(color: NeonTheme.accent.opacity(0.3), radius: 16, x: 0, y: 8)
     }
 
     private func applyPreset(_ result: () -> (from: CheckIn, to: CheckIn)?) {
@@ -209,53 +240,43 @@ struct CompareView: View {
     }
 
     private var posePicker: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            AppTheme.sectionLabel("Pose")
-            Picker("Pose", selection: $selectedPose) {
-                ForEach(Pose.allCases, id: \.self) { pose in
-                    Text(pose.displayName).tag(pose)
+        HStack(spacing: 8) {
+            ForEach(Pose.allCases, id: \.self) { pose in
+                Button {
+                    selectedPose = pose
+                } label: {
+                    Text(pose.displayName)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(selectedPose == pose ? Color.black : NeonTheme.textSecondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                                .fill(selectedPose == pose ? NeonTheme.accent : NeonTheme.surface)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                                .stroke(selectedPose == pose ? Color.clear : NeonTheme.border, lineWidth: 1)
+                        )
+                        .shadow(color: selectedPose == pose ? NeonTheme.accent.opacity(0.3) : Color.clear, radius: 10, x: 0, y: 6)
                 }
+                .buttonStyle(.plain)
             }
-            .pickerStyle(.segmented)
         }
     }
 
     private var datePickers: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            AppTheme.sectionLabel("Select check-ins")
-            Button {
-                showFromPicker = true
-            } label: {
-                HStack {
-                    Label(fromCheckIn.map { formattedDate($0.date) } ?? "From", systemImage: "calendar")
-                    Spacer()
-                    if fromCheckIn != nil {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .padding(AppTheme.cardPadding)
-                .background(AppTheme.cardBackground)
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                showToPicker = true
-            } label: {
-                HStack {
-                    Label(toCheckIn.map { formattedDate($0.date) } ?? "To", systemImage: "calendar")
-                    Spacer()
-                    if toCheckIn != nil {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .padding(AppTheme.cardPadding)
-                .background(AppTheme.cardBackground)
-            }
-            .buttonStyle(.plain)
+        HStack(spacing: 12) {
+            datePickerCard(
+                title: "From",
+                value: fromCheckIn.map { formattedDate($0.date) } ?? "Select date",
+                isSelected: fromCheckIn != nil
+            ) { showFromPicker = true }
+            datePickerCard(
+                title: "To",
+                value: toCheckIn.map { formattedDate($0.date) } ?? "Select date",
+                isSelected: toCheckIn != nil
+            ) { showToPicker = true }
         }
     }
 
@@ -267,84 +288,99 @@ struct CompareView: View {
 
                 if fromPath != nil || toPath != nil {
                     VStack(spacing: 16) {
-                        // Stats
                         comparisonStats(from: from, to: to)
-
-                        // Side by side
                         HStack(alignment: .top, spacing: 16) {
-                            comparisonPhoto(path: fromPath, label: formattedDate(from.date))
-                            comparisonPhoto(path: toPath, label: formattedDate(to.date))
+                            comparisonPhoto(path: fromPath, label: formattedDate(from.date), subtitle: "Before", highlight: false)
+                            comparisonPhoto(path: toPath, label: formattedDate(to.date), subtitle: "After", highlight: true)
                         }
                     }
                 } else {
                     Text("No \(selectedPose.displayName.lowercased()) photos for one or both dates.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .padding()
+                        .foregroundStyle(NeonTheme.textTertiary)
+                        .padding(16)
                 }
             }
         }
     }
 
+    @ViewBuilder
     private func comparisonStats(from: CheckIn, to: CheckIn) -> some View {
         let days = Calendar.current.dateComponents([.day], from: from.date, to: to.date).day ?? 0
         let weightDelta: Double? = hideWeightDelta ? nil : (from.weight.flatMap { w1 in to.weight.map { w2 in w2 - w1 } })
 
-        return HStack(spacing: 28) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Days between")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text("\(days)")
-                    .font(.title2.weight(.semibold))
+        if let delta = weightDelta {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                statCard(title: "Days Between", value: "\(days)", highlight: false)
+                statCard(
+                    title: "Weight Change",
+                    value: "\(delta >= 0 ? "+" : "")\(formatWeight(delta)) \(weightUnit.rawValue)",
+                    highlight: true
+                )
             }
-            if let delta = weightDelta {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Weight change")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text("\(delta >= 0 ? "+" : "")\(formatWeight(delta)) \(weightUnit.rawValue)")
-                        .font(.title2.weight(.semibold))
-                }
-            }
+        } else {
+            statCard(title: "Days Between", value: "\(days)", highlight: false)
         }
-        .frame(maxWidth: .infinity)
-        .padding(AppTheme.cardPadding)
-        .background(AppTheme.cardBackground)
     }
 
-    private func comparisonPhoto(path: String?, label: String) -> some View {
+    private func comparisonPhoto(path: String?, label: String, subtitle: String, highlight: Bool) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
             if let path, let img = ImageStore.shared.loadImage(path: path) {
                 img
                     .resizable()
                     .scaledToFit()
                     .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
+                    .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
             } else {
-                RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall)
-                    .fill(Color(.tertiarySystemFill))
-                    .frame(minHeight: 180)
-                    .overlay {
-                        Image(systemName: "photo")
-                            .font(.title)
-                            .foregroundStyle(.quaternary)
-                    }
+                RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: highlight ? [NeonTheme.lime500, NeonTheme.lime600] : [NeonTheme.surfaceStrong, NeonTheme.surfaceAlt],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(minHeight: 200)
             }
+            VStack(alignment: .center, spacing: 2) {
+                Text(label)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(highlight ? NeonTheme.accent : NeonTheme.textPrimary)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(highlight ? NeonTheme.accent.opacity(0.7) : NeonTheme.textTertiary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.bottom, 8)
         }
-        .frame(maxWidth: .infinity)
+        .padding(12)
+        .neonCard(
+            background: NeonTheme.surface,
+            border: highlight ? NeonTheme.accent.opacity(0.5) : NeonTheme.border
+        )
     }
 
     private var emptyPrompt: some View {
-        ContentUnavailableView {
-            Label("Select two check-ins", systemImage: "square.split.2x2")
-        } description: {
-            Text("Choose \"From\" and \"To\" dates to compare photos and weight.")
+        VStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(NeonTheme.surfaceAlt)
+                    .frame(width: 80, height: 80)
+                Image(systemName: "calendar")
+                    .font(.title)
+                    .foregroundStyle(NeonTheme.textTertiary)
+            }
+            Text("Select two check-ins")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(NeonTheme.textPrimary)
+            Text("Use quick presets or tap the date selectors above")
+                .font(.subheadline)
+                .foregroundStyle(NeonTheme.textTertiary)
+                .multilineTextAlignment(.center)
         }
-        .padding(.vertical, 32)
+        .padding(28)
+        .frame(maxWidth: .infinity)
+        .neonCard()
     }
 
     private func formattedDate(_ date: Date) -> String {
@@ -359,6 +395,93 @@ struct CompareView: View {
         formatter.maximumFractionDigits = 1
         formatter.positivePrefix = "+"
         return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+    }
+}
+
+private extension CompareView {
+    var header: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Compare")
+                .font(.system(size: 36, weight: .bold))
+                .foregroundStyle(NeonTheme.textPrimary)
+            Text("See your transformation")
+                .font(.subheadline)
+                .foregroundStyle(NeonTheme.textTertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 24)
+        .padding(.top, 28)
+        .padding(.bottom, 20)
+        .background(NeonTheme.surface)
+        .overlay(
+            Rectangle()
+                .fill(NeonTheme.border)
+                .frame(height: 1),
+            alignment: .bottom
+        )
+    }
+
+    func datePickerCard(title: String, value: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 8) {
+                    NeonIconBadge(systemName: "calendar", size: 40)
+                    Text(title.uppercased())
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(NeonTheme.textTertiary)
+                }
+                Text(value)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(NeonTheme.textPrimary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .neonCard(
+                background: NeonTheme.surface,
+                border: isSelected ? NeonTheme.accent : NeonTheme.border,
+                shadowColor: isSelected ? NeonTheme.accent.opacity(0.2) : Color.black.opacity(0.3)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    func statCard(title: String, value: String, highlight: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(highlight ? NeonTheme.accent : NeonTheme.textTertiary)
+            Text(value)
+                .font(.system(size: 24, weight: .bold))
+                .foregroundStyle(highlight ? NeonTheme.accent : NeonTheme.textPrimary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .neonCard(
+            background: NeonTheme.surface,
+            border: highlight ? NeonTheme.accent.opacity(0.3) : NeonTheme.border,
+            shadowColor: highlight ? NeonTheme.accent.opacity(0.2) : Color.black.opacity(0.3)
+        )
+    }
+}
+
+private struct NeonChipStyle: ButtonStyle {
+    var highlight: Bool = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(highlight ? Color.black : NeonTheme.textSecondary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(
+                Capsule()
+                    .fill(highlight ? NeonTheme.accent : NeonTheme.surfaceAlt)
+            )
+            .overlay(
+                Capsule()
+                    .stroke(highlight ? Color.clear : NeonTheme.borderStrong, lineWidth: 1)
+            )
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
     }
 }
 

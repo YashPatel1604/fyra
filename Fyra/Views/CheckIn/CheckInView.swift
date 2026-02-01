@@ -38,7 +38,6 @@ struct CheckInView: View {
     private var lastWeight: Double? {
         allCheckIns.first(where: { $0.weight != nil })?.weight
     }
-    /// Most recent previous day's weight (for fluctuation banner).
     private var previousDayWeight: Double? {
         let calendar = Calendar.current
         let startOfToday = calendar.startOfDay(for: Date())
@@ -48,35 +47,30 @@ struct CheckInView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: AppTheme.sectionSpacing) {
-                    if showReturnBanner {
-                        returnBanner
+                VStack(spacing: 0) {
+                    header
+                    VStack(spacing: 20) {
+                        if showReturnBanner {
+                            returnBanner
+                        }
+                        if showFluctuationBanner {
+                            fluctuationBanner
+                        }
+                        if !photoFirstMode {
+                            weightCard
+                        }
+                        photosCard
+                        winsCard
+                        measurementsCard
+                        noteCard
+                        saveButton
                     }
-                    if showFluctuationBanner {
-                        fluctuationBanner
-                    }
-                    if !photoFirstMode {
-                        weightSection
-                    }
-                    poseSection
-                    tagsSection
-                    waistSection
-                    noteSection
-                    saveButton
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 24)
-            }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Today")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                if photoFirstMode {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Add weight") { showWeightSheet = true }
-                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 24)
                 }
             }
+            .background(NeonTheme.background)
+            .toolbar(.hidden, for: .navigationBar)
             .onAppear {
                 loadToday()
                 updateReturnBanner()
@@ -92,23 +86,67 @@ struct CheckInView: View {
         }
     }
 
+    private var header: some View {
+        HStack(spacing: 12) {
+            NeonIconBadge(systemName: "chart.line.uptrend.xyaxis", size: 48)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Track Your Progress")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(NeonTheme.textPrimary)
+                Text(formattedToday)
+                    .font(.subheadline)
+                    .foregroundStyle(NeonTheme.textTertiary)
+            }
+            Spacer()
+            if photoFirstMode {
+                Button {
+                    showWeightSheet = true
+                } label: {
+                    Text("Add weight")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.black)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(NeonTheme.accent)
+                        .clipShape(Capsule())
+                }
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 28)
+        .padding(.bottom, 20)
+        .background(NeonTheme.surface)
+        .overlay(
+            Rectangle()
+                .fill(NeonTheme.border)
+                .frame(height: 1),
+            alignment: .bottom
+        )
+    }
+
+    private var formattedToday: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, MMMM d"
+        return formatter.string(from: Date())
+    }
+
     private var returnBanner: some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: "hand.wave")
                 .font(.body)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(NeonTheme.textSecondary)
             Text("Welcome back. Let's just log today.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(NeonTheme.textSecondary)
             Spacer(minLength: 8)
             Button("Dismiss") {
                 dismissReturnBanner()
             }
             .font(.caption.weight(.medium))
-            .frame(minWidth: AppTheme.minTapTarget, minHeight: AppTheme.minTapTarget)
+            .foregroundStyle(NeonTheme.textTertiary)
         }
-        .padding(AppTheme.cardPadding)
-        .background(AppTheme.cardBackground)
+        .padding(16)
+        .neonCard(background: NeonTheme.surface, border: NeonTheme.border)
     }
 
     private func updateReturnBanner() {
@@ -129,39 +167,41 @@ struct CheckInView: View {
         let dismissed = settings?.fluctuationBannerDismissedDateStrings.contains(todayDateString) ?? false
         return Group {
             if !dismissed {
-                HStack(alignment: .top, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
                     Image(systemName: "info.circle")
                         .font(.body)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NeonTheme.textSecondary)
                     Text(InsightService.fluctuationBannerMessage(unit: weightUnit))
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NeonTheme.textSecondary)
                     Spacer(minLength: 8)
                     Button("Dismiss") {
                         dismissFluctuationBanner()
                     }
                     .font(.caption.weight(.medium))
-                    .frame(minWidth: AppTheme.minTapTarget, minHeight: AppTheme.minTapTarget)
+                    .foregroundStyle(NeonTheme.textTertiary)
                 }
-                .padding(AppTheme.cardPadding)
-                .background(AppTheme.cardBackground)
+                .padding(16)
+                .neonCard(background: NeonTheme.surface, border: NeonTheme.border)
             }
         }
     }
 
     private var weightEntrySheet: some View {
         NavigationStack {
-            VStack(spacing: AppTheme.itemSpacing) {
+            VStack(spacing: 16) {
                 TextField("Weight", text: $weightText)
                     .keyboardType(.decimalPad)
                     .font(.title2.weight(.medium))
                     .multilineTextAlignment(.center)
-                    .padding(AppTheme.cardPadding)
-                    .background(AppTheme.inputBackground)
+                    .padding(16)
+                    .background(NeonTheme.surfaceAlt)
+                    .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
+                    .foregroundStyle(NeonTheme.textPrimary)
                 Spacer()
             }
-            .padding(20)
-            .background(Color(.systemGroupedBackground))
+            .padding(24)
+            .background(NeonTheme.background)
             .navigationTitle("Add weight")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -202,162 +242,251 @@ struct CheckInView: View {
         showFluctuationBanner = false
     }
 
-    private var weightSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            AppTheme.sectionLabel("Weight")
-            TextField("Enter weight", text: $weightText)
-                .keyboardType(.decimalPad)
-                .font(.title2.weight(.medium))
-                .padding(AppTheme.cardPadding)
-                .background(AppTheme.inputBackground)
-                .onChange(of: weightText) { _, _ in hasChanges = true }
-        }
-    }
-
-    private var poseSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            AppTheme.sectionLabel("Photos")
-            let posesToShow: [Pose] = photoMode == .threePose ? Pose.allCases : [settings?.preferredPoseSingle ?? .front]
-            ForEach(posesToShow, id: \.self) { pose in
-                poseRow(pose: pose, selectedItem: binding(for: pose))
-            }
-        }
-    }
-
-    private func binding(for pose: Pose) -> Binding<PhotosPickerItem?> {
-        switch pose {
-        case .front: return $selectedFront
-        case .side: return $selectedSide
-        case .back: return $selectedBack
-        }
-    }
-
-    private func poseRow(pose: Pose, selectedItem: Binding<PhotosPickerItem?>) -> some View {
-        let path = currentCheckIn?.photoPath(for: pose)
-        return HStack(spacing: AppTheme.itemSpacing) {
-            ZStack {
-                if let path, let img = ImageStore.shared.loadImage(path: path) {
-                    img
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 84, height: 84)
-                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
-                } else {
-                    RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall)
-                        .fill(Color(.tertiarySystemFill))
-                        .frame(width: 84, height: 84)
-                        .overlay {
-                            Image(systemName: "camera.fill")
-                                .font(.title2)
-                                .foregroundStyle(.quaternary)
-                        }
-                }
-            }
-            .frame(width: 84, height: 84)
-
+    private var weightCard: some View {
+        HStack(alignment: .top, spacing: 14) {
+            NeonIconBadge(systemName: "scalemass", size: 56)
             VStack(alignment: .leading, spacing: 6) {
-                PhotosPicker(
-                    selection: selectedItem,
-                    matching: .images,
-                    photoLibrary: .shared()
-                ) {
-                    Text(path != nil ? "Replace" : "Add \(pose.displayName)")
-                        .font(.subheadline.weight(.medium))
-                }
-                .onChange(of: selectedItem.wrappedValue) { _, newItem in
-                    if newItem != nil { hasChanges = true }
-                    Task { await processPhoto(for: pose, item: newItem) }
-                }
-                if path != nil {
-                    Button("Remove") {
-                        removePhoto(for: pose)
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text("Today's Weight")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(NeonTheme.textSecondary)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    TextField("0", text: $weightText)
+                        .keyboardType(.decimalPad)
+                        .font(.system(size: 40, weight: .bold))
+                        .foregroundStyle(NeonTheme.textPrimary)
+                        .onChange(of: weightText) { _, _ in hasChanges = true }
+                    Text(weightUnit.rawValue)
+                        .font(.title3.weight(.medium))
+                        .foregroundStyle(NeonTheme.textTertiary)
                 }
             }
             Spacer()
         }
-        .padding(.vertical, 6)
+        .padding(24)
+        .neonCard()
     }
 
-    private var tagsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            AppTheme.sectionLabel("Non-scale wins (optional)")
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 130))], spacing: 10) {
+    private var photosCard: some View {
+        let posesToShow: [Pose] = photoMode == .threePose ? Pose.allCases : [settings?.preferredPoseSingle ?? .front]
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: max(1, min(3, posesToShow.count)))
+
+        return VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                NeonIconBadge(systemName: "camera", size: 56)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Progress Photos")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(NeonTheme.textPrimary)
+                    Text("Capture your transformation")
+                        .font(.caption)
+                        .foregroundStyle(NeonTheme.textTertiary)
+                }
+            }
+
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(posesToShow, id: \.self) { pose in
+                    photoTile(pose: pose, selectedItem: binding(for: pose))
+                }
+            }
+        }
+        .padding(24)
+        .neonCard()
+    }
+
+    private func photoTile(pose: Pose, selectedItem: Binding<PhotosPickerItem?>) -> some View {
+        let path = currentCheckIn?.photoPath(for: pose)
+
+        return PhotosPicker(
+            selection: selectedItem,
+            matching: .images,
+            photoLibrary: .shared()
+        ) {
+            ZStack {
+                RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                    .fill(NeonTheme.surfaceAlt)
+                    .overlay {
+                        if path == nil {
+                            RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                                .stroke(style: StrokeStyle(lineWidth: 2, dash: [6]))
+                                .foregroundStyle(NeonTheme.borderStrong)
+                        }
+                    }
+
+                if let path, let img = ImageStore.shared.loadImage(path: path) {
+                    img
+                        .resizable()
+                        .scaledToFill()
+                        .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
+                } else {
+                    VStack(spacing: 8) {
+                        Image(systemName: "camera")
+                            .font(.title2)
+                            .foregroundStyle(NeonTheme.textTertiary)
+                        Text(pose.displayName)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(NeonTheme.textTertiary)
+                    }
+                }
+            }
+            .aspectRatio(3.0 / 4.0, contentMode: .fit)
+        }
+        .buttonStyle(.plain)
+        .onChange(of: selectedItem.wrappedValue) { _, newItem in
+            if newItem != nil { hasChanges = true }
+            Task { await processPhoto(for: pose, item: newItem) }
+        }
+        .contextMenu {
+            if path != nil {
+                Button("Remove") {
+                    removePhoto(for: pose)
+                }
+            }
+        }
+    }
+
+    private var winsCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                NeonIconBadge(systemName: "star", size: 56)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Non-Scale Wins")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(NeonTheme.textPrimary)
+                    Text("Optional")
+                        .font(.caption)
+                        .foregroundStyle(NeonTheme.textTertiary)
+                }
+            }
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 10)], spacing: 10) {
                 ForEach(CheckInTag.allCases.filter { $0 != .custom }, id: \.self) { tag in
                     let raw = tag.rawValue
                     let selected = selectedTagRawValues.contains(raw)
                     Button {
-                        if selected { selectedTagRawValues.remove(raw) }
-                        else { selectedTagRawValues.insert(raw) }
+                        if selected { selectedTagRawValues.remove(raw) } else { selectedTagRawValues.insert(raw) }
                         hasChanges = true
                     } label: {
                         Text(tag.displayName)
-                            .font(.caption.weight(.medium))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(selected ? Color.black : NeonTheme.textSecondary)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 8)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(AppTheme.pillBackground(selected: selected))
+                            .frame(maxWidth: .infinity)
+                            .background(
+                                Capsule().fill(selected ? NeonTheme.accent : NeonTheme.surfaceAlt)
+                            )
+                            .overlay(
+                                Capsule().stroke(selected ? Color.clear : NeonTheme.borderStrong, lineWidth: 1)
+                            )
                     }
                     .buttonStyle(.plain)
                 }
             }
+
             TextField("Other", text: $customTagText)
                 .font(.subheadline)
-                .padding(14)
-                .background(AppTheme.inputBackground)
+                .padding(12)
+                .background(NeonTheme.surfaceAlt)
+                .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                        .stroke(NeonTheme.borderStrong, lineWidth: 1)
+                )
+                .foregroundStyle(NeonTheme.textPrimary)
                 .onChange(of: customTagText) { _, _ in hasChanges = true }
         }
+        .padding(24)
+        .neonCard()
     }
 
-    private var waistSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            AppTheme.sectionLabel("Waist (optional)")
-            TextField("Measurement", text: $waistText)
-                .keyboardType(.decimalPad)
-                .font(.body)
-                .padding(AppTheme.cardPadding)
-                .background(AppTheme.inputBackground)
-                .onChange(of: waistText) { _, _ in hasChanges = true }
+    private var measurementsCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                NeonIconBadge(systemName: "ruler", size: 56)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Measurements")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(NeonTheme.textPrimary)
+                    Text("Optional")
+                        .font(.caption)
+                        .foregroundStyle(NeonTheme.textTertiary)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Waist")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(NeonTheme.textTertiary)
+                HStack {
+                    TextField("0", text: $waistText)
+                        .keyboardType(.decimalPad)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(NeonTheme.textPrimary)
+                        .onChange(of: waistText) { _, _ in hasChanges = true }
+                    Spacer()
+                    Text(weightUnit.rawValue)
+                        .font(.caption)
+                        .foregroundStyle(NeonTheme.textTertiary)
+                }
+                .padding(12)
+                .background(NeonTheme.surfaceAlt)
+                .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                        .stroke(NeonTheme.borderStrong, lineWidth: 1)
+                )
+            }
         }
+        .padding(24)
+        .neonCard()
     }
 
-    private var noteSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            AppTheme.sectionLabel("Note (optional)")
+    private var noteCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Notes")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(NeonTheme.textPrimary)
             TextField("Add a note", text: $noteText, axis: .vertical)
                 .lineLimit(3...6)
-                .padding(AppTheme.cardPadding)
-                .background(AppTheme.inputBackground)
+                .padding(12)
+                .background(NeonTheme.surfaceAlt)
+                .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                        .stroke(NeonTheme.borderStrong, lineWidth: 1)
+                )
+                .foregroundStyle(NeonTheme.textPrimary)
                 .onChange(of: noteText) { _, _ in hasChanges = true }
         }
+        .padding(24)
+        .neonCard()
     }
 
     private var saveButton: some View {
         Button {
             save()
         } label: {
-            Text("Save")
-                .font(.headline.weight(.semibold))
+            Text("Save Today's Progress")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(hasChanges ? Color.black : NeonTheme.textTertiary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
-                .frame(minHeight: AppTheme.minTapTarget)
+                .background(hasChanges ? NeonTheme.accent : NeonTheme.surfaceAlt)
+                .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
+                .shadow(color: hasChanges ? NeonTheme.accent.opacity(0.4) : Color.clear, radius: 16, x: 0, y: 8)
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
         .disabled(!hasChanges)
-        .accessibilityLabel("Save check-in")
     }
 
     private var loggedToastView: some View {
         Text("Logged")
             .font(.subheadline.weight(.medium))
-            .foregroundStyle(.primary)
+            .foregroundStyle(NeonTheme.textPrimary)
             .padding(.horizontal, 24)
             .padding(.vertical, 14)
-            .background(.ultraThinMaterial, in: Capsule())
-            .shadow(color: .black.opacity(0.08), radius: 12, y: 4)
+            .background(NeonTheme.surface)
+            .clipShape(Capsule())
+            .shadow(color: Color.black.opacity(0.35), radius: 12, x: 0, y: 6)
             .padding(.bottom, 40)
     }
 
@@ -421,6 +550,14 @@ struct CheckInView: View {
         case .back: selectedBack = nil
         }
         hasChanges = true
+    }
+
+    private func binding(for pose: Pose) -> Binding<PhotosPickerItem?> {
+        switch pose {
+        case .front: return $selectedFront
+        case .side: return $selectedSide
+        case .back: return $selectedBack
+        }
     }
 
     private func save() {

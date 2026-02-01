@@ -96,116 +96,191 @@ struct TimelineView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if checkIns.isEmpty {
-                    emptyState
-                } else {
-                    listContent
+            ScrollView {
+                VStack(spacing: 0) {
+                    header
+                    VStack(spacing: 20) {
+                        if checkIns.isEmpty {
+                            emptyState
+                        } else {
+                            content
+                        }
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 24)
                 }
             }
-            .navigationTitle("Timeline")
-            .navigationBarTitleDisplayMode(.large)
+            .background(NeonTheme.background)
+            .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Timeline")
+                .font(.system(size: 36, weight: .bold))
+                .foregroundStyle(NeonTheme.textPrimary)
+            Text("Your journey at a glance")
+                .font(.subheadline)
+                .foregroundStyle(NeonTheme.textTertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 24)
+        .padding(.top, 28)
+        .padding(.bottom, 20)
+        .background(NeonTheme.surface)
+        .overlay(
+            Rectangle()
+                .fill(NeonTheme.border)
+                .frame(height: 1),
+            alignment: .bottom
+        )
+    }
+
+    private var content: some View {
+        VStack(spacing: 20) {
+            WeightGraphView(
+                trendPoints: trendPoints,
+                rawPoints: rawPoints,
+                weeklyRateText: weeklyRateText,
+                hasEnoughData: hasEnoughWeightData,
+                selectedRange: $selectedRange,
+                showDailyPoints: $showDailyPoints
+            )
+            statsGrid
+            if measurementNudgeMessage != nil || paceContextMessage != nil {
+                insightsCard
+            }
+            recentCheckIns
         }
     }
 
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("No check-ins yet", systemImage: "calendar.badge.plus")
-        } description: {
+        VStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(NeonTheme.surfaceAlt)
+                    .frame(width: 72, height: 72)
+                Image(systemName: "calendar.badge.plus")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(NeonTheme.textTertiary)
+            }
+            Text("No check-ins yet")
+                .font(.headline)
+                .foregroundStyle(NeonTheme.textPrimary)
             Text("Log a photo or weight on the Check-In tab to see your progress here.")
+                .font(.subheadline)
+                .foregroundStyle(NeonTheme.textTertiary)
+                .multilineTextAlignment(.center)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(28)
+        .frame(maxWidth: .infinity)
+        .neonCard()
     }
 
-    private var listContent: some View {
-        List {
-            Section {
-                WeightGraphView(
-                    trendPoints: trendPoints,
-                    rawPoints: rawPoints,
-                    weeklyRateText: weeklyRateText,
-                    hasEnoughData: hasEnoughWeightData,
-                    selectedRange: $selectedRange,
-                    showDailyPoints: $showDailyPoints
-                )
-            }
-            .listRowBackground(Color(.secondarySystemGroupedBackground))
+    private var rangeChangeLabel: String {
+        selectedRange == .all ? "All-time Change" : "\(selectedRange.pickerLabel) Change"
+    }
 
-            Section("Metrics") {
-                if let trendChangeText {
-                    HStack {
-                        Text("\(selectedRange.metricLabel) trend change")
-                            .font(.subheadline)
-                        Spacer()
-                        Text(trendChangeText)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                if let weeklyRateText {
-                    HStack {
-                        Text("Weekly rate")
-                            .font(.subheadline)
-                        Spacer()
-                        Text(weeklyRateText)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                HStack {
-                    Text("Days logged this month")
-                        .font(.subheadline)
-                    Spacer()
-                    Text("\(uniqueDaysLoggedThisMonth)")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-                if consistencyLast7Days > 0 {
-                    HStack {
-                        Text("Consistency (last 7 days)")
-                            .font(.subheadline)
-                        Spacer()
-                        Text("\(consistencyLast7Days)/7")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .listRowBackground(Color(.secondarySystemGroupedBackground))
+    private var consistencyPercentText: String? {
+        guard consistencyLast7Days > 0 else { return nil }
+        let percent = Int(round(Double(consistencyLast7Days) / 7.0 * 100.0))
+        return "\(percent)%"
+    }
 
-            if measurementNudgeMessage != nil || paceContextMessage != nil {
-                Section("Notes") {
+    private var statsGrid: some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+            statCard(
+                icon: "scope",
+                title: rangeChangeLabel,
+                value: trendChangeText ?? "—"
+            )
+            statCard(
+                icon: "chart.line.downtrend.xyaxis",
+                title: "Weekly Rate",
+                value: weeklyRateText ?? "—"
+            )
+            statCard(
+                icon: "calendar",
+                title: "This Month",
+                value: "\(uniqueDaysLoggedThisMonth) days"
+            )
+            statCard(
+                icon: "bolt",
+                title: "Consistency",
+                value: consistencyPercentText ?? "—"
+            )
+        }
+    }
+
+    private func statCard(icon: String, title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            NeonIconBadge(systemName: icon, size: 40)
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(NeonTheme.textTertiary)
+            Text(value)
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(NeonTheme.textPrimary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(18)
+        .neonCard()
+    }
+
+    private var insightsCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
+                Text("💡")
+                    .font(.title3)
+                VStack(alignment: .leading, spacing: 6) {
                     if let msg = measurementNudgeMessage {
                         Text(msg)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(NeonTheme.textPrimary)
                     }
                     if let msg = paceContextMessage {
                         Text(msg)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(NeonTheme.textSecondary)
                     }
                 }
-                .listRowBackground(Color(.secondarySystemGroupedBackground))
-            }
-
-            ForEach(checkIns) { checkIn in
-                NavigationLink {
-                    CheckInDetailView(checkIn: checkIn)
-                } label: {
-                    TimelineRowView(
-                        checkIn: checkIn,
-                        weightUnit: weightUnit,
-                        showDailyPoints: showDailyPoints,
-                        weightTrendService: weightTrendService,
-                        showWeight: !photoFirstMode,
-                        isBaseline: settings?.baselineCheckInID == checkIn.id
-                    )
-                }
-                .listRowBackground(Color(.secondarySystemGroupedBackground))
             }
         }
-        .listStyle(.insetGrouped)
+        .padding(20)
+        .neonCard(
+            background: NeonTheme.surface,
+            border: NeonTheme.accent.opacity(0.3),
+            shadowColor: NeonTheme.accent.opacity(0.2)
+        )
+    }
+
+    private var recentCheckIns: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Recent Check-ins".uppercased())
+                .font(.caption.weight(.semibold))
+                .tracking(1.1)
+                .foregroundStyle(NeonTheme.textTertiary)
+                .padding(.horizontal, 4)
+
+            LazyVStack(spacing: 12) {
+                ForEach(checkIns) { checkIn in
+                    NavigationLink {
+                        CheckInDetailView(checkIn: checkIn)
+                    } label: {
+                        TimelineRowView(
+                            checkIn: checkIn,
+                            weightUnit: weightUnit,
+                            showDailyPoints: showDailyPoints,
+                            weightTrendService: weightTrendService,
+                            showWeight: !photoFirstMode,
+                            isBaseline: settings?.baselineCheckInID == checkIn.id
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
     }
 
     private func formatSignedChange(_ value: Double) -> String {
@@ -226,48 +301,61 @@ struct TimelineRowView: View {
     var isBaseline: Bool = false
 
     var body: some View {
-        HStack(spacing: AppTheme.itemSpacing) {
-            if let path = checkIn.primaryPhotoPath, let img = ImageStore.shared.loadImage(path: path) {
-                img
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 52, height: 52)
-                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
-            } else {
-                RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall)
-                    .fill(Color(.tertiarySystemFill))
-                    .frame(width: 52, height: 52)
-                    .overlay {
-                        Image(systemName: "person.fill")
-                            .font(.body)
-                            .foregroundStyle(.quaternary)
+        HStack(spacing: 14) {
+            ZStack(alignment: .topTrailing) {
+                if let path = checkIn.primaryPhotoPath, let img = ImageStore.shared.loadImage(path: path) {
+                    img
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 64, height: 64)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                } else {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(NeonTheme.surfaceAlt)
+                        .frame(width: 64, height: 64)
+                        .overlay {
+                            Image(systemName: "camera")
+                                .font(.title3)
+                                .foregroundStyle(NeonTheme.textTertiary)
+                        }
+                }
+                if isBaseline {
+                    ZStack {
+                        Circle()
+                            .fill(NeonTheme.accent)
+                        Image(systemName: "star.fill")
+                            .font(.caption)
+                            .foregroundStyle(Color.black)
                     }
+                    .frame(width: 22, height: 22)
+                    .offset(x: 6, y: -6)
+                }
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(formattedDate(checkIn.date))
-                        .font(.subheadline.weight(.medium))
-                    if isBaseline {
-                        Text("Baseline")
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color(.tertiarySystemFill))
-                            .clipShape(Capsule())
-                    }
-                }
+            VStack(alignment: .leading, spacing: 6) {
+                Text(formattedDate(checkIn.date))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(NeonTheme.textPrimary)
                 if showWeight, let display = weightDisplay {
                     Text(display)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NeonTheme.textSecondary)
                 }
             }
 
             Spacer()
+
+            ZStack {
+                Circle()
+                    .fill(NeonTheme.surfaceAlt)
+                    .frame(width: 32, height: 32)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(NeonTheme.textTertiary)
+            }
         }
-        .padding(.vertical, 6)
+        .padding(16)
+        .neonCard()
     }
 
     private var weightDisplay: String? {

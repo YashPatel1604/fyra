@@ -71,61 +71,121 @@ struct WeightGraphView: View {
     @Binding var showDailyPoints: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            AppTheme.sectionLabel("Weight trend")
-
-            Picker("Range", selection: $selectedRange) {
-                ForEach(WeightGraphRange.allCases) { range in
-                    Text(range.pickerLabel).tag(range)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                NeonIconBadge(systemName: "chart.line.downtrend.xyaxis")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Weight Trend")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(NeonTheme.textPrimary)
+                    Text("Track your progress")
+                        .font(.caption)
+                        .foregroundStyle(NeonTheme.textTertiary)
                 }
             }
-            .pickerStyle(.segmented)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(WeightGraphRange.allCases) { range in
+                        Button {
+                            selectedRange = range
+                        } label: {
+                            Text(range.pickerLabel)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(selectedRange == range ? Color.black : NeonTheme.textSecondary)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(
+                                    Capsule()
+                                        .fill(selectedRange == range ? NeonTheme.accent : NeonTheme.surfaceAlt)
+                                )
+                                .overlay(
+                                    Capsule()
+                                        .stroke(selectedRange == range ? Color.clear : NeonTheme.borderStrong, lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
 
             if hasEnoughData {
-                Chart {
-                    ForEach(trendPoints) { point in
-                        LineMark(
-                            x: .value("Date", point.date),
-                            y: .value("Trend", point.value)
-                        )
-                        .interpolationMethod(.catmullRom)
-                        .lineStyle(StrokeStyle(lineWidth: 2))
-                        .foregroundStyle(Color.accentColor)
-                    }
-                    if showDailyPoints {
-                        ForEach(rawPoints) { point in
-                            PointMark(
+                ZStack {
+                    RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                        .fill(NeonTheme.surfaceAlt)
+                    Chart {
+                        ForEach(trendPoints) { point in
+                            LineMark(
                                 x: .value("Date", point.date),
-                                y: .value("Weight", point.value)
+                                y: .value("Trend", point.value)
                             )
-                            .foregroundStyle(.secondary)
-                            .symbolSize(22)
+                            .interpolationMethod(.catmullRom)
+                            .lineStyle(StrokeStyle(lineWidth: 3))
+                            .foregroundStyle(NeonTheme.accent)
+                        }
+                        if showDailyPoints {
+                            ForEach(rawPoints) { point in
+                                PointMark(
+                                    x: .value("Date", point.date),
+                                    y: .value("Weight", point.value)
+                                )
+                                .foregroundStyle(NeonTheme.accent)
+                                .symbolSize(26)
+                            }
                         }
                     }
+                    .chartXAxis {
+                        AxisMarks(values: .automatic(desiredCount: 5)) { value in
+                            AxisGridLine().foregroundStyle(Color.clear)
+                            AxisTick().foregroundStyle(Color.clear)
+                            AxisValueLabel()
+                                .font(.caption2)
+                                .foregroundStyle(NeonTheme.textTertiary)
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) { _ in
+                            AxisGridLine()
+                                .foregroundStyle(NeonTheme.borderStrong.opacity(0.4))
+                            AxisTick().foregroundStyle(Color.clear)
+                            AxisValueLabel()
+                                .font(.caption2)
+                                .foregroundStyle(NeonTheme.textTertiary)
+                        }
+                    }
+                    .padding(14)
                 }
                 .frame(height: 220)
-                .chartYAxis {
-                    AxisMarks(position: .leading)
-                }
             } else {
-                Text("Not enough data yet")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 12)
+                ZStack {
+                    RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                        .fill(NeonTheme.surfaceAlt)
+                    Text("Not enough data yet")
+                        .font(.subheadline)
+                        .foregroundStyle(NeonTheme.textTertiary)
+                }
+                .frame(height: 200)
             }
 
-            Toggle("Show daily points", isOn: $showDailyPoints)
-                .font(.subheadline)
-                .disabled(!hasEnoughData)
+            HStack {
+                Text("Show data points")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(NeonTheme.textSecondary)
+                Spacer()
+                NeonToggle(isOn: $showDailyPoints)
+                    .opacity(hasEnoughData ? 1 : 0.5)
+                    .disabled(!hasEnoughData)
+            }
 
             if let weeklyRateText {
-                Text("Trend: \(weeklyRateText)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                Text("Trending \(weeklyRateText)")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(NeonTheme.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 4)
+        .padding(24)
+        .neonCard()
     }
 }
