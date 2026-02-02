@@ -32,7 +32,6 @@ struct SettingsView: View {
                             reminderSettingsCard(settings: settings)
                             healthSyncCard(settings: settings)
                             photoSettingsCard(settings: settings)
-                            compareSettingsCard(settings: settings)
                             goalCard(settings: settings)
                             progressPeriodCard(settings: settings)
                             whyStartedCard(settings: settings)
@@ -399,32 +398,6 @@ struct SettingsView: View {
                     .foregroundStyle(NeonTheme.textPrimary)
             }
 
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Photo-first mode")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(NeonTheme.textPrimary)
-                    Spacer()
-                    NeonToggle(isOn: Binding(
-                        get: { settings.photoFirstMode },
-                        set: { newValue in
-                            settings.photoFirstMode = newValue
-                            try? modelContext.save()
-                        }
-                    ))
-                }
-                Text("Show photos in timeline instead of weight")
-                    .font(.caption)
-                    .foregroundStyle(NeonTheme.textTertiary)
-            }
-            .padding(14)
-            .background(NeonTheme.surfaceAlt)
-            .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
-            .overlay(
-                    RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
-                        .stroke(NeonTheme.borderStrong, lineWidth: 1)
-            )
-
             HStack {
                 Text("Photo alignment assist")
                     .font(.subheadline.weight(.semibold))
@@ -486,40 +459,6 @@ struct SettingsView: View {
                     }
                 }
             }
-        }
-        .padding(20)
-        .neonCard()
-    }
-
-    private func compareSettingsCard(settings: UserSettings) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                NeonIconBadge(systemName: "square.split.2x2", size: 48)
-                Text("Compare Settings")
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(NeonTheme.textPrimary)
-            }
-
-            HStack {
-                Text("Hide weight change")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(NeonTheme.textPrimary)
-                Spacer()
-                NeonToggle(isOn: Binding(
-                    get: { settings.hideWeightDeltaInCompare },
-                    set: { newValue in
-                        settings.hideWeightDeltaInCompare = newValue
-                        try? modelContext.save()
-                    }
-                ))
-            }
-            .padding(14)
-            .background(NeonTheme.surfaceAlt)
-            .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
-                    .stroke(NeonTheme.borderStrong, lineWidth: 1)
-            )
         }
         .padding(20)
         .neonCard()

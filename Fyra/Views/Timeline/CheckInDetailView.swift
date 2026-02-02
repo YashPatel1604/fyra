@@ -3,9 +3,10 @@
 //  Fyra
 //
 
-import SwiftUI
+import AVFoundation
 import SwiftData
-import PhotosUI
+import SwiftUI
+import UIKit
 
 struct CheckInDetailView: View {
     @Environment(\.modelContext) private var modelContext
@@ -18,9 +19,12 @@ struct CheckInDetailView: View {
     @State private var waistText: String = ""
     @State private var selectedTagRawValues: Set<String> = []
     @State private var customTagText: String = ""
-    @State private var selectedFront: PhotosPickerItem?
-    @State private var selectedSide: PhotosPickerItem?
-    @State private var selectedBack: PhotosPickerItem?
+    @State private var poseForPhotoSource: Pose?
+    @State private var poseForImagePicker: Pose?
+    @State private var pickerSourceType: UIImagePickerController.SourceType = .photoLibrary
+    @State private var showImagePicker: Bool = false
+    @State private var showCameraPermissionAlert: Bool = false
+    @State private var showCameraUnavailableAlert: Bool = false
     @State private var hasChanges: Bool = false
 
     private var settings: UserSettings? { settingsList.first }
@@ -85,6 +89,62 @@ struct CheckInDetailView: View {
         }
         .onChange(of: weightText) { _, _ in hasChanges = true }
         .onChange(of: noteText) { _, _ in hasChanges = true }
+        .sheet(isPresented: $showImagePicker, onDismiss: {
+            poseForImagePicker = nil
+        }) {
+            if let poseForImagePicker {
+                SystemImagePicker(sourceType: pickerSourceType) { image in
+                    processPickedImage(image, for: poseForImagePicker)
+                    self.poseForImagePicker = nil
+                } onCancel: {
+                    self.poseForImagePicker = nil
+                }
+            }
+        }
+        .confirmationDialog(
+            "Add Progress Photo",
+            isPresented: Binding(
+                get: { poseForPhotoSource != nil },
+                set: { isPresented in
+                    if !isPresented { poseForPhotoSource = nil }
+                }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let poseForPhotoSource {
+                if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                    Button("Take \(poseForPhotoSource.displayName) Photo") {
+                        presentCamera(for: poseForPhotoSource)
+                    }
+                }
+                Button("Choose from Library") {
+                    presentLibrary(for: poseForPhotoSource)
+                }
+                if checkIn.photoPath(for: poseForPhotoSource) != nil {
+                    Button("Remove Photo", role: .destructive) {
+                        removePhoto(for: poseForPhotoSource)
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            if let poseForPhotoSource {
+                Text("Select how to add your \(poseForPhotoSource.displayName.lowercased()) photo.")
+            }
+        }
+        .alert("Camera Access Needed", isPresented: $showCameraPermissionAlert) {
+            Button("Not now", role: .cancel) {}
+            Button("Open Settings") {
+                openAppSettings()
+            }
+        } message: {
+            Text("Allow camera access in Settings to take progress photos in-app.")
+        }
+        .alert("Camera Unavailable", isPresented: $showCameraUnavailableAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("This device does not have an available camera.")
+        }
     }
 
     private var baselineSection: some View {
@@ -139,14 +199,6 @@ struct CheckInDetailView: View {
         }
     }
 
-    private func binding(for pose: Pose) -> Binding<PhotosPickerItem?> {
-        switch pose {
-        case .front: return $selectedFront
-        case .side: return $selectedSide
-        case .back: return $selectedBack
-        }
-    }
-
     private static let poseImageSize: CGFloat = 200
 
     private func detailPoseRow(pose: Pose) -> some View {
@@ -173,18 +225,13 @@ struct CheckInDetailView: View {
             .frame(width: Self.poseImageSize, height: Self.poseImageSize)
 
             VStack(alignment: .leading, spacing: 8) {
-                PhotosPicker(
-                    selection: binding(for: pose),
-                    matching: .images,
-                    photoLibrary: .shared()
-                ) {
+                Button {
+                    poseForPhotoSource = pose
+                } label: {
                     Text(path != nil ? "Replace \(pose.displayName)" : "Add \(pose.displayName)")
                         .font(.subheadline.weight(.medium))
                 }
-                .onChange(of: binding(for: pose).wrappedValue) { _, newItem in
-                    if newItem != nil { hasChanges = true }
-                    Task { await processPhoto(for: pose, item: newItem) }
-                }
+                .buttonStyle(.plain)
 
                 if path != nil {
                     Button("Remove") {
@@ -198,6 +245,19 @@ struct CheckInDetailView: View {
             Spacer()
         }
         .padding(.vertical, 4)
+        .contextMenu {
+            Button("Take Photo") {
+                presentCamera(for: pose)
+            }
+            Button("Choose from Library") {
+                presentLibrary(for: pose)
+            }
+            if path != nil {
+                Button("Remove", role: .destructive) {
+                    removePhoto(for: pose)
+                }
+            }
+        }
     }
 
     private var tagsSection: some View {
@@ -284,28 +344,63 @@ struct CheckInDetailView: View {
         return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 
-    private func processPhoto(for pose: Pose, item: PhotosPickerItem?) async {
-        guard let item, let data = try? await item.loadTransferable(type: Data.self) else { return }
+    private func presentLibrary(for pose: Pose) {
+        poseForPhotoSource = nil
+        openImagePicker(sourceType: .photoLibrary, for: pose)
+    }
+
+    private func presentCamera(for pose: Pose) {
+        poseForPhotoSource = nil
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            showCameraUnavailableAlert = true
+            return
+        }
+
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            openImagePicker(sourceType: .camera, for: pose)
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                Task { @MainActor in
+                    if granted {
+                        openImagePicker(sourceType: .camera, for: pose)
+                    } else {
+                        showCameraPermissionAlert = true
+                    }
+                }
+            }
+        case .denied, .restricted:
+            showCameraPermissionAlert = true
+        @unknown default:
+            showCameraPermissionAlert = true
+        }
+    }
+
+    private func openImagePicker(sourceType: UIImagePickerController.SourceType, for pose: Pose) {
+        poseForImagePicker = pose
+        pickerSourceType = sourceType
+        showImagePicker = true
+    }
+
+    private func processPickedImage(_ image: UIImage, for pose: Pose) {
         if let oldPath = checkIn.photoPath(for: pose) {
             ImageStore.shared.delete(path: oldPath)
         }
-        if let path = ImageStore.shared.save(imageData: data, checkinID: checkIn.id, pose: pose) {
-            await MainActor.run {
-                checkIn.setPhotoPath(path, for: pose)
-                hasChanges = true
-            }
+        if let path = ImageStore.shared.save(image: image, checkinID: checkIn.id, pose: pose) {
+            checkIn.setPhotoPath(path, for: pose)
+            hasChanges = true
         }
+    }
+
+    private func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     private func removePhoto(for pose: Pose) {
         guard let path = checkIn.photoPath(for: pose) else { return }
         ImageStore.shared.delete(path: path)
         checkIn.setPhotoPath(nil, for: pose)
-        switch pose {
-        case .front: selectedFront = nil
-        case .side: selectedSide = nil
-        case .back: selectedBack = nil
-        }
         hasChanges = true
     }
 

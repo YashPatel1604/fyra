@@ -24,9 +24,6 @@ struct CompareView: View {
 
     private var settings: UserSettings? { settingsList.first }
     private var weightUnit: WeightUnit { settings?.weightUnit ?? .lb }
-    private var hideWeightDelta: Bool {
-        (settings?.hideWeightDeltaInCompare ?? false) || (settings?.photoFirstMode ?? false)
-    }
     private var hasCompareInsights: Bool {
         showCompareNudge || !(settings?.whyStarted.isEmpty ?? true)
     }
@@ -46,11 +43,6 @@ struct CompareView: View {
                         presetButtons
                         timelapseCard
                         posePicker
-                        if hideWeightDelta {
-                            Text("Weight change hidden")
-                                .font(.caption)
-                                .foregroundStyle(NeonTheme.textTertiary)
-                        }
                         datePickers
                         if fromCheckIn != nil && toCheckIn != nil {
                             if lightingDiffers {
@@ -361,7 +353,7 @@ struct CompareView: View {
     @ViewBuilder
     private func comparisonStats(from: CheckIn, to: CheckIn) -> some View {
         let days = Calendar.current.dateComponents([.day], from: from.date, to: to.date).day ?? 0
-        let weightDelta: Double? = hideWeightDelta ? nil : (from.weight.flatMap { w1 in to.weight.map { w2 in w2 - w1 } })
+        let weightDelta: Double? = from.weight.flatMap { w1 in to.weight.map { w2 in w2 - w1 } }
 
         if let delta = weightDelta {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {

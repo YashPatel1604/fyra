@@ -111,11 +111,6 @@
   },
   {
     "isFramework" : true,
-    "moduleName" : "ExtensionFoundation",
-    "modulePath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/swift\/iphoneos\/prebuilt-modules\/26.2\/ExtensionFoundation.swiftmodule\/arm64e-apple-ios.swiftmodule"
-  },
-  {
-    "isFramework" : true,
     "moduleName" : "FileProvider",
     "modulePath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/swift\/iphoneos\/prebuilt-modules\/26.2\/FileProvider.swiftmodule\/arm64e-apple-ios.swiftmodule"
   },
@@ -153,16 +148,6 @@
     "isFramework" : false,
     "moduleName" : "Observation",
     "modulePath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/swift\/iphoneos\/prebuilt-modules\/26.2\/Observation.swiftmodule\/arm64e-apple-ios.swiftmodule"
-  },
-  {
-    "isFramework" : true,
-    "moduleName" : "Photos",
-    "modulePath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/swift\/iphoneos\/prebuilt-modules\/26.2\/Photos.swiftmodule\/arm64e-apple-ios.swiftmodule"
-  },
-  {
-    "isFramework" : true,
-    "moduleName" : "PhotosUI",
-    "modulePath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/swift\/iphoneos\/prebuilt-modules\/26.2\/PhotosUI.swiftmodule\/arm64e-apple-ios.swiftmodule"
   },
   {
     "isFramework" : false,
@@ -253,11 +238,6 @@
     "isFramework" : false,
     "moduleName" : "_DarwinFoundation3",
     "modulePath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/swift\/iphoneos\/prebuilt-modules\/26.2\/_DarwinFoundation3.swiftmodule\/arm64e-apple-ios.swiftmodule"
-  },
-  {
-    "isFramework" : true,
-    "moduleName" : "_PhotosUI_SwiftUI",
-    "modulePath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Toolchains\/XcodeDefault.xctoolchain\/usr\/lib\/swift\/iphoneos\/prebuilt-modules\/26.2\/_PhotosUI_SwiftUI.swiftmodule\/arm64e-apple-ios.swiftmodule"
   },
   {
     "isFramework" : false,
@@ -434,13 +414,6 @@
     "moduleName" : "Dispatch"
   },
   {
-    "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/iPhoneOS.platform\/Developer\/SDKs\/iPhoneOS.sdk\/System\/Library\/Frameworks\/ExtensionFoundation.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/yash\/Documents\/Fyra\/.DerivedData\/ModuleCache.noindex\/ExtensionFoundation-ICEBA1LLKMVLVUCB1YQHFUMN.pcm",
-    "isBridgingHeaderDependency" : false,
-    "isFramework" : false,
-    "moduleName" : "ExtensionFoundation"
-  },
-  {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/iPhoneOS.platform\/Developer\/SDKs\/iPhoneOS.sdk\/System\/Library\/Frameworks\/FileProvider.framework\/Modules\/module.modulemap",
     "clangModulePath" : "\/Users\/yash\/Documents\/Fyra\/.DerivedData\/ModuleCache.noindex\/FileProvider-2B6SJ2F2YK86TZJFW1NE7RB7R.pcm",
     "isBridgingHeaderDependency" : false,
@@ -523,20 +496,6 @@
     "isBridgingHeaderDependency" : false,
     "isFramework" : false,
     "moduleName" : "OpenGLES"
-  },
-  {
-    "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/iPhoneOS.platform\/Developer\/SDKs\/iPhoneOS.sdk\/System\/Library\/Frameworks\/Photos.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/yash\/Documents\/Fyra\/.DerivedData\/ModuleCache.noindex\/Photos-EVQPGACRKYA42PWYC78QOL5VJ.pcm",
-    "isBridgingHeaderDependency" : false,
-    "isFramework" : false,
-    "moduleName" : "Photos"
-  },
-  {
-    "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/iPhoneOS.platform\/Developer\/SDKs\/iPhoneOS.sdk\/System\/Library\/Frameworks\/PhotosUI.framework\/Modules\/module.modulemap",
-    "clangModulePath" : "\/Users\/yash\/Documents\/Fyra\/.DerivedData\/ModuleCache.noindex\/PhotosUI-EBAY1IV6PL9Q02Y3NBDTG5WEQ.pcm",
-    "isBridgingHeaderDependency" : false,
-    "isFramework" : false,
-    "moduleName" : "PhotosUI"
   },
   {
     "clangModuleMapPath" : "\/Applications\/Xcode.app\/Contents\/Developer\/Platforms\/iPhoneOS.platform\/Developer\/SDKs\/iPhoneOS.sdk\/System\/Library\/Frameworks\/QuartzCore.framework\/Modules\/module.modulemap",

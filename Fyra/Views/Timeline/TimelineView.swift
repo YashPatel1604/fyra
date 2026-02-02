@@ -17,7 +17,6 @@ struct TimelineView: View {
 
     private var settings: UserSettings? { settingsList.first }
     private var weightUnit: WeightUnit { settings?.weightUnit ?? .lb }
-    private var photoFirstMode: Bool { settings?.photoFirstMode ?? false }
     private var weightTrendService: WeightTrendService {
         WeightTrendService(checkIns: checkIns.reversed(), unit: weightUnit)
     }
@@ -478,7 +477,6 @@ struct TimelineView: View {
                             weightUnit: weightUnit,
                             showDailyPoints: showDailyPoints,
                             weightTrendService: weightTrendService,
-                            showWeight: !photoFirstMode,
                             isBaseline: settings?.baselineCheckInID == checkIn.id
                         )
                     }
@@ -517,7 +515,6 @@ struct TimelineRowView: View {
     let weightUnit: WeightUnit
     var showDailyPoints: Bool = false
     var weightTrendService: WeightTrendService?
-    var showWeight: Bool = true
     var isBaseline: Bool = false
 
     var body: some View {
@@ -556,7 +553,7 @@ struct TimelineRowView: View {
                 Text(formattedDate(checkIn.date))
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(NeonTheme.textPrimary)
-                if showWeight, let display = weightDisplay {
+                if let display = weightDisplay {
                     Text(display)
                         .font(.caption)
                         .foregroundStyle(NeonTheme.textSecondary)
@@ -579,7 +576,6 @@ struct TimelineRowView: View {
     }
 
     private var weightDisplay: String? {
-        guard showWeight else { return nil }
         guard let service = weightTrendService else {
             return checkIn.weight.map { "\(formatWeight($0)) \(weightUnit.rawValue)" }
         }

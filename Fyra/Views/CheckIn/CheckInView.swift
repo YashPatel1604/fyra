@@ -3,9 +3,10 @@
 //  Fyra
 //
 
-import SwiftUI
+import AVFoundation
 import SwiftData
-import PhotosUI
+import SwiftUI
+import UIKit
 
 struct CheckInView: View {
     @Environment(\.modelContext) private var modelContext
@@ -20,12 +21,14 @@ struct CheckInView: View {
     @State private var waistText: String = ""
     @State private var selectedTagRawValues: Set<String> = []
     @State private var customTagText: String = ""
-    @State private var selectedFront: PhotosPickerItem?
-    @State private var selectedSide: PhotosPickerItem?
-    @State private var selectedBack: PhotosPickerItem?
+    @State private var poseForPhotoSource: Pose?
+    @State private var poseForImagePicker: Pose?
+    @State private var pickerSourceType: UIImagePickerController.SourceType = .photoLibrary
+    @State private var showImagePicker: Bool = false
+    @State private var showCameraPermissionAlert: Bool = false
+    @State private var showCameraUnavailableAlert: Bool = false
     @State private var hasChanges: Bool = false
     @State private var loggedToast: Bool = false
-    @State private var showWeightSheet: Bool = false
     @State private var showFluctuationBanner: Bool = false
     @State private var showReturnBanner: Bool = false
     @State private var showInsights = false
@@ -34,7 +37,6 @@ struct CheckInView: View {
     private enum FocusInput {
         case weight
         case waist
-        case sheetWeight
     }
 
     private var settings: UserSettings? { settingsList.first }
@@ -43,7 +45,6 @@ struct CheckInView: View {
     }
     private var weightUnit: WeightUnit { settings?.weightUnit ?? .lb }
     private var photoMode: PhotoMode { settings?.photoMode ?? .single }
-    private var photoFirstMode: Bool { settings?.photoFirstMode ?? false }
     private var alignmentAssistEnabled: Bool { settings?.alignmentAssistEnabled ?? true }
     private var smartRemindersEnabled: Bool { settings?.smartRemindersEnabled ?? true }
     private var lastWeight: Double? {
@@ -83,9 +84,7 @@ struct CheckInView: View {
                         if hasInsightsContent {
                             insightsCard
                         }
-                        if !photoFirstMode {
-                            weightCard
-                        }
+                        weightCard
                         photosCard
                         optionalDetailsCard
                         saveButton
@@ -118,8 +117,61 @@ struct CheckInView: View {
             .overlay(alignment: .bottom) {
                 if loggedToast { loggedToastView }
             }
-            .sheet(isPresented: $showWeightSheet) {
-                weightEntrySheet
+            .sheet(isPresented: $showImagePicker, onDismiss: {
+                poseForImagePicker = nil
+            }) {
+                if let poseForImagePicker {
+                    SystemImagePicker(sourceType: pickerSourceType) { image in
+                        processPickedImage(image, for: poseForImagePicker)
+                        self.poseForImagePicker = nil
+                    } onCancel: {
+                        self.poseForImagePicker = nil
+                    }
+                }
+            }
+            .confirmationDialog(
+                "Add Progress Photo",
+                isPresented: Binding(
+                    get: { poseForPhotoSource != nil },
+                    set: { isPresented in
+                        if !isPresented { poseForPhotoSource = nil }
+                    }
+                ),
+                titleVisibility: .visible
+            ) {
+                if let poseForPhotoSource {
+                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                        Button("Take \(poseForPhotoSource.displayName) Photo") {
+                            presentCamera(for: poseForPhotoSource)
+                        }
+                    }
+                    Button("Choose from Library") {
+                        presentLibrary(for: poseForPhotoSource)
+                    }
+                    if currentCheckIn?.photoPath(for: poseForPhotoSource) != nil {
+                        Button("Remove Photo", role: .destructive) {
+                            removePhoto(for: poseForPhotoSource)
+                        }
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                if let poseForPhotoSource {
+                    Text("Select how to add your \(poseForPhotoSource.displayName.lowercased()) photo.")
+                }
+            }
+            .alert("Camera Access Needed", isPresented: $showCameraPermissionAlert) {
+                Button("Not now", role: .cancel) {}
+                Button("Open Settings") {
+                    openAppSettings()
+                }
+            } message: {
+                Text("Allow camera access in Settings to take progress photos in-app.")
+            }
+            .alert("Camera Unavailable", isPresented: $showCameraUnavailableAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("This device does not have an available camera.")
             }
         }
     }
@@ -138,19 +190,6 @@ struct CheckInView: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 8) {
                 streakHeaderBadge
-                if photoFirstMode {
-                    Button {
-                        showWeightSheet = true
-                    } label: {
-                        Text("Add weight")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(Color.black)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(NeonTheme.accent)
-                            .clipShape(Capsule())
-                    }
-                }
             }
         }
         .padding(.horizontal, 24)
@@ -331,37 +370,6 @@ struct CheckInView: View {
         }
     }
 
-    private var weightEntrySheet: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                TextField("Weight", text: $weightText)
-                    .keyboardType(.decimalPad)
-                    .font(.title2.weight(.medium))
-                    .focused($focusedInput, equals: .sheetWeight)
-                    .multilineTextAlignment(.center)
-                    .padding(16)
-                    .background(NeonTheme.surfaceAlt)
-                    .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
-                    .foregroundStyle(NeonTheme.textPrimary)
-                Spacer()
-            }
-            .padding(24)
-            .background(NeonTheme.background)
-            .navigationTitle("Add weight")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showWeightSheet = false } }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        focusedInput = nil
-                        hasChanges = true
-                        showWeightSheet = false
-                    }
-                }
-            }
-        }
-    }
-
     private var todayDateString: String {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
@@ -438,7 +446,7 @@ struct CheckInView: View {
 
             LazyVGrid(columns: columns, spacing: 12) {
                 ForEach(posesToShow, id: \.self) { pose in
-                    photoTile(pose: pose, selectedItem: binding(for: pose))
+                    photoTile(pose: pose)
                 }
             }
         }
@@ -446,15 +454,13 @@ struct CheckInView: View {
         .neonCard()
     }
 
-    private func photoTile(pose: Pose, selectedItem: Binding<PhotosPickerItem?>) -> some View {
+    private func photoTile(pose: Pose) -> some View {
         let path = currentCheckIn?.photoPath(for: pose)
         let previousPath = alignmentAssistEnabled ? previousPhotoPath(for: pose) : nil
 
-        return PhotosPicker(
-            selection: selectedItem,
-            matching: .images,
-            photoLibrary: .shared()
-        ) {
+        return Button {
+            poseForPhotoSource = pose
+        } label: {
             ZStack {
                 RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
                     .fill(NeonTheme.surfaceAlt)
@@ -514,11 +520,13 @@ struct CheckInView: View {
             .aspectRatio(3.0 / 4.0, contentMode: .fit)
         }
         .buttonStyle(.plain)
-        .onChange(of: selectedItem.wrappedValue) { _, newItem in
-            if newItem != nil { hasChanges = true }
-            Task { await processPhoto(for: pose, item: newItem) }
-        }
         .contextMenu {
+            Button("Take Photo") {
+                presentCamera(for: pose)
+            }
+            Button("Choose from Library") {
+                presentLibrary(for: pose)
+            }
             if path != nil {
                 Button("Remove") {
                     removePhoto(for: pose)
@@ -552,6 +560,60 @@ struct CheckInView: View {
             .sorted { $0.date > $1.date }
             .compactMap { $0.photoPath(for: pose) }
             .first
+    }
+
+    private func presentLibrary(for pose: Pose) {
+        poseForPhotoSource = nil
+        openImagePicker(sourceType: .photoLibrary, for: pose)
+    }
+
+    private func presentCamera(for pose: Pose) {
+        poseForPhotoSource = nil
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            showCameraUnavailableAlert = true
+            return
+        }
+
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            openImagePicker(sourceType: .camera, for: pose)
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                Task { @MainActor in
+                    if granted {
+                        openImagePicker(sourceType: .camera, for: pose)
+                    } else {
+                        showCameraPermissionAlert = true
+                    }
+                }
+            }
+        case .denied, .restricted:
+            showCameraPermissionAlert = true
+        @unknown default:
+            showCameraPermissionAlert = true
+        }
+    }
+
+    private func openImagePicker(sourceType: UIImagePickerController.SourceType, for pose: Pose) {
+        poseForImagePicker = pose
+        pickerSourceType = sourceType
+        showImagePicker = true
+    }
+
+    private func processPickedImage(_ image: UIImage, for pose: Pose) {
+        guard let checkIn = currentCheckIn else { return }
+        if let oldPath = checkIn.photoPath(for: pose) {
+            ImageStore.shared.delete(path: oldPath)
+        }
+        if let path = ImageStore.shared.save(image: image, checkinID: checkIn.id, pose: pose) {
+            checkIn.setPhotoPath(path, for: pose)
+            hasChanges = true
+        }
+    }
+
+    private func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     private var optionalDetailsCard: some View {
@@ -746,38 +808,11 @@ struct CheckInView: View {
         return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 
-    private func processPhoto(for pose: Pose, item: PhotosPickerItem?) async {
-        guard let item, let data = try? await item.loadTransferable(type: Data.self),
-              let checkIn = currentCheckIn else { return }
-        if let oldPath = checkIn.photoPath(for: pose) {
-            ImageStore.shared.delete(path: oldPath)
-        }
-        if let path = ImageStore.shared.save(imageData: data, checkinID: checkIn.id, pose: pose) {
-            await MainActor.run {
-                checkIn.setPhotoPath(path, for: pose)
-                hasChanges = true
-            }
-        }
-    }
-
     private func removePhoto(for pose: Pose) {
         guard let checkIn = currentCheckIn, let path = checkIn.photoPath(for: pose) else { return }
         ImageStore.shared.delete(path: path)
         checkIn.setPhotoPath(nil, for: pose)
-        switch pose {
-        case .front: selectedFront = nil
-        case .side: selectedSide = nil
-        case .back: selectedBack = nil
-        }
         hasChanges = true
-    }
-
-    private func binding(for pose: Pose) -> Binding<PhotosPickerItem?> {
-        switch pose {
-        case .front: return $selectedFront
-        case .side: return $selectedSide
-        case .back: return $selectedBack
-        }
     }
 
     private func save() {
