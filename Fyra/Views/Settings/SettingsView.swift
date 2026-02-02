@@ -195,15 +195,13 @@ struct SettingsView: View {
                     title: "LB",
                     selected: settings.weightUnit == .lb
                 ) {
-                    settings.weightUnit = .lb
-                    try? modelContext.save()
+                    applyWeightUnitChange(to: .lb, settings: settings)
                 }
                 selectionButton(
                     title: "KG",
                     selected: settings.weightUnit == .kg
                 ) {
-                    settings.weightUnit = .kg
-                    try? modelContext.save()
+                    applyWeightUnitChange(to: .kg, settings: settings)
                 }
             }
         }
@@ -763,6 +761,19 @@ struct SettingsView: View {
             s.lastExportDate = Date()
             try? modelContext.save()
         }
+    }
+
+    private func applyWeightUnitChange(to newUnit: WeightUnit, settings: UserSettings) {
+        let oldUnit = settings.weightUnit
+        guard oldUnit != newUnit else { return }
+        UnitConversionService.convertStoredValues(
+            from: oldUnit,
+            to: newUnit,
+            checkIns: allCheckIns,
+            settings: settings,
+            periods: periods
+        )
+        try? modelContext.save()
     }
 
     @MainActor
