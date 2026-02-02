@@ -25,6 +25,7 @@ struct CheckInDetailView: View {
 
     private var settings: UserSettings? { settingsList.first }
     private var weightUnit: WeightUnit { settings?.weightUnit ?? .lb }
+    private var waistUnit: String { weightUnit.waistUnitSymbol }
     private var photoMode: PhotoMode { settings?.photoMode ?? .single }
     private var isBaseline: Bool { BaselineService.isBaseline(checkIn, settings: settings) }
 
@@ -67,7 +68,14 @@ struct CheckInDetailView: View {
             ToolbarItem(placement: .primaryAction) {
                 baselineButton
             }
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    dismissKeyboard()
+                }
+            }
         }
+        .scrollDismissesKeyboard(.interactively)
         .onAppear {
             weightText = checkIn.weight.map { formatWeight($0) } ?? ""
             noteText = checkIn.note ?? ""
@@ -224,12 +232,18 @@ struct CheckInDetailView: View {
 
     private var waistSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            AppTheme.sectionLabel("Waist (optional)")
-            TextField("Measurement", text: $waistText)
-                .keyboardType(.decimalPad)
-                .padding(AppTheme.cardPadding)
-                .background(AppTheme.inputBackground)
-                .onChange(of: waistText) { _, _ in hasChanges = true }
+            AppTheme.sectionLabel("Waist (\(waistUnit), optional)")
+            HStack {
+                TextField("Measurement", text: $waistText)
+                    .keyboardType(.decimalPad)
+                    .onChange(of: waistText) { _, _ in hasChanges = true }
+                Spacer()
+                Text(waistUnit)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(AppTheme.cardPadding)
+            .background(AppTheme.inputBackground)
         }
     }
 

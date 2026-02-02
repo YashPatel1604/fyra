@@ -1,0 +1,23 @@
+{
+  "/Users/yash/Documents/Fyra/Fyra/Views/AppRootView.swift" : {
+    "const-values" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/AppRootView.swiftconstvalues",
+    "dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/AppRootView.d",
+    "diagnostics" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/AppRootView.dia",
+    "object" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/AppRootView.o",
+    "swift-dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/AppRootView.swiftdeps"
+  },
+  "/Users/yash/Documents/Fyra/Fyra/Views/Timeline/TimelineView.swift" : {
+    "const-values" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/TimelineView.swiftconstvalues",
+    "dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/TimelineView.d",
+    "diagnostics" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/TimelineView.dia",
+    "object" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/TimelineView.o",
+    "swift-dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/TimelineView.swiftdeps"
+  },
+  "/Users/yash/Documents/Fyra/Fyra/Views/Timeline/WeightGraphView.swift" : {
+    "const-values" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/WeightGraphView.swiftconstvalues",
+    "dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/WeightGraphView.d",
+    "diagnostics" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/WeightGraphView.dia",
+    "object" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/WeightGraphView.o",
+    "swift-dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/WeightGraphView.swiftdeps"
+  }
+}

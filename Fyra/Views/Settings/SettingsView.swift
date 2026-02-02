@@ -44,6 +44,15 @@ struct SettingsView: View {
             }
             .background(NeonTheme.background)
             .toolbar(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        dismissKeyboard()
+                    }
+                }
+            }
+            .scrollDismissesKeyboard(.interactively)
             .onAppear {
                 if let settings {
                     _ = ProgressPeriodService.ensureActivePeriodIfNeeded(
@@ -813,6 +822,12 @@ struct ExportCompareImageSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        dismissKeyboard()
+                    }
+                }
             }
             .sheet(isPresented: $showFromPicker) {
                 CheckInPickerView(checkIns: checkIns, selected: $fromCheckIn, weightUnit: weightUnit)

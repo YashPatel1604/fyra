@@ -67,7 +67,7 @@ struct InsightService {
         let formatter = NumberFormatter()
         formatter.maximumFractionDigits = 1
         let num = formatter.string(from: NSNumber(value: absWaist)) ?? "\(absWaist)"
-        return "Weight is stable, but waist is down \(num) in — progress can show up beyond the scale."
+        return "Weight is stable, but waist is down \(num) \(unit.waistUnitSymbol) — progress can show up beyond the scale."
     }
 
     /// Gentle pace context for muscle gain: "Current pace: +1.5 lb/week (target was 0.5–1.0)." No alarms.

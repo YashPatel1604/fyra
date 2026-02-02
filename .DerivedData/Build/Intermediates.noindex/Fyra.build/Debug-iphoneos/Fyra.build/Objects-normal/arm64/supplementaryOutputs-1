@@ -1,0 +1,30 @@
+{
+  "/Users/yash/Documents/Fyra/Fyra/Models/CheckIn.swift" : {
+    "const-values" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/CheckIn.swiftconstvalues",
+    "dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/CheckIn.d",
+    "diagnostics" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/CheckIn.dia",
+    "object" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/CheckIn.o",
+    "swift-dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/CheckIn.swiftdeps"
+  },
+  "/Users/yash/Documents/Fyra/Fyra/Models/ProgressPeriod.swift" : {
+    "const-values" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/ProgressPeriod.swiftconstvalues",
+    "dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/ProgressPeriod.d",
+    "diagnostics" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/ProgressPeriod.dia",
+    "object" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/ProgressPeriod.o",
+    "swift-dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/ProgressPeriod.swiftdeps"
+  },
+  "/Users/yash/Documents/Fyra/Fyra/Models/UserSettings.swift" : {
+    "const-values" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/UserSettings.swiftconstvalues",
+    "dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/UserSettings.d",
+    "diagnostics" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/UserSettings.dia",
+    "object" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/UserSettings.o",
+    "swift-dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/UserSettings.swiftdeps"
+  },
+  "/Users/yash/Documents/Fyra/Fyra/Services/BaselineService.swift" : {
+    "const-values" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/BaselineService.swiftconstvalues",
+    "dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/BaselineService.d",
+    "diagnostics" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/BaselineService.dia",
+    "object" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/BaselineService.o",
+    "swift-dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/BaselineService.swiftdeps"
+  }
+}

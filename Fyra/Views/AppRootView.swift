@@ -5,6 +5,9 @@
 
 import SwiftUI
 import SwiftData
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct AppRootView: View {
     @Environment(\.modelContext) private var modelContext
@@ -98,6 +101,14 @@ struct AppRootView: View {
 #Preview {
     AppRootView()
         .modelContainer(for: [CheckIn.self, UserSettings.self, ProgressPeriod.self], inMemory: true)
+}
+
+extension View {
+    func dismissKeyboard() {
+#if canImport(UIKit)
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+#endif
+    }
 }
 
 private struct SplashView: View {

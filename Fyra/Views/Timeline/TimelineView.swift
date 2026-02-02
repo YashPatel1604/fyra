@@ -13,6 +13,7 @@ struct TimelineView: View {
     @State private var showDailyPoints: Bool = false
     @State private var selectedRange: WeightGraphRange = .thirtyDays
     @State private var showInsights = false
+    @State private var showAllPhotos = false
 
     private var settings: UserSettings? { settingsList.first }
     private var weightUnit: WeightUnit { settings?.weightUnit ?? .lb }
@@ -121,6 +122,26 @@ struct TimelineView: View {
     private var hasInsightsContent: Bool {
         milestoneStatus != nil || weeklySummary.loggedDays > 0 || measurementNudgeMessage != nil || paceContextMessage != nil || plateauMessage != nil
     }
+    private var allPhotoItems: [TimelinePhotoItem] {
+        checkIns
+            .flatMap { checkIn in
+                Pose.allCases.compactMap { pose -> TimelinePhotoItem? in
+                    guard let path = checkIn.photoPath(for: pose) else { return nil }
+                    return TimelinePhotoItem(
+                        id: "\(checkIn.id.uuidString)-\(pose.rawValue)",
+                        date: checkIn.date,
+                        pose: pose,
+                        path: path
+                    )
+                }
+            }
+            .sorted { lhs, rhs in
+                if lhs.date == rhs.date {
+                    return poseSortRank(lhs.pose) < poseSortRank(rhs.pose)
+                }
+                return lhs.date > rhs.date
+            }
+    }
 
     var body: some View {
         NavigationStack {
@@ -140,6 +161,9 @@ struct TimelineView: View {
             }
             .background(NeonTheme.background)
             .toolbar(.hidden, for: .navigationBar)
+            .sheet(isPresented: $showAllPhotos) {
+                AllPhotosView(items: allPhotoItems)
+            }
         }
     }
 
@@ -421,11 +445,28 @@ struct TimelineView: View {
 
     private var recentCheckIns: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Recent Check-ins".uppercased())
-                .font(.caption.weight(.semibold))
-                .tracking(1.1)
-                .foregroundStyle(NeonTheme.textTertiary)
-                .padding(.horizontal, 4)
+            HStack {
+                Text("Recent Check-ins".uppercased())
+                    .font(.caption.weight(.semibold))
+                    .tracking(1.1)
+                    .foregroundStyle(NeonTheme.textTertiary)
+                    .padding(.horizontal, 4)
+                Spacer()
+                if !allPhotoItems.isEmpty {
+                    Button {
+                        showAllPhotos = true
+                    } label: {
+                        Text("All Photos (\(allPhotoItems.count))")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Color.black)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 7)
+                            .background(NeonTheme.accent)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
 
             LazyVStack(spacing: 12) {
                 ForEach(checkIns) { checkIn in
@@ -460,6 +501,14 @@ struct TimelineView: View {
         formatter.minimumFractionDigits = 0
         formatter.maximumFractionDigits = 1
         return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+    }
+
+    private func poseSortRank(_ pose: Pose) -> Int {
+        switch pose {
+        case .front: return 0
+        case .side: return 1
+        case .back: return 2
+        }
     }
 }
 
@@ -554,6 +603,115 @@ struct TimelineRowView: View {
         formatter.minimumFractionDigits = 0
         formatter.maximumFractionDigits = 1
         return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+    }
+}
+
+private struct TimelinePhotoItem: Identifiable {
+    let id: String
+    let date: Date
+    let pose: Pose
+    let path: String
+}
+
+private struct AllPhotosView: View {
+    @Environment(\.dismiss) private var dismiss
+    let items: [TimelinePhotoItem]
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10)
+    ]
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if items.isEmpty {
+                    emptyState
+                } else {
+                    ScrollView {
+                        LazyVGrid(columns: columns, spacing: 10) {
+                            ForEach(items) { item in
+                                tile(for: item)
+                            }
+                        }
+                        .padding(16)
+                    }
+                }
+            }
+            .background(NeonTheme.background)
+            .navigationTitle("All Photos")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "photo.on.rectangle.angled")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(NeonTheme.textTertiary)
+            Text("No photos yet")
+                .font(.headline)
+                .foregroundStyle(NeonTheme.textPrimary)
+            Text("Take progress pictures in Check-In to build your gallery.")
+                .font(.subheadline)
+                .foregroundStyle(NeonTheme.textTertiary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func tile(for item: TimelinePhotoItem) -> some View {
+        ZStack(alignment: .bottomLeading) {
+            if let image = ImageStore.shared.loadImage(path: item.path) {
+                image
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Rectangle()
+                    .fill(NeonTheme.surfaceAlt)
+                    .overlay {
+                        Image(systemName: "photo")
+                            .foregroundStyle(NeonTheme.textTertiary)
+                    }
+            }
+
+            LinearGradient(
+                colors: [Color.black.opacity(0.0), Color.black.opacity(0.55)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(shortDate(item.date))
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.white)
+                Text(item.pose.displayName)
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.9))
+            }
+            .padding(8)
+        }
+        .frame(maxWidth: .infinity)
+        .aspectRatio(3.0 / 4.0, contentMode: .fit)
+        .clipped()
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(NeonTheme.border, lineWidth: 1)
+        )
+    }
+
+    private func shortDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        return formatter.string(from: date)
     }
 }
 

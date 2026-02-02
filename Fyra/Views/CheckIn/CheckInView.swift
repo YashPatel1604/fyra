@@ -101,6 +101,7 @@ struct CheckInView: View {
                     Spacer()
                     Button("Done") {
                         focusedInput = nil
+                        dismissKeyboard()
                     }
                 }
             }
@@ -647,7 +648,7 @@ struct CheckInView: View {
                         .foregroundStyle(NeonTheme.textPrimary)
                         .onChange(of: waistText) { _, _ in hasChanges = true }
                     Spacer()
-                    Text(weightUnit.rawValue)
+                    Text(weightUnit.waistUnitSymbol)
                         .font(.caption)
                         .foregroundStyle(NeonTheme.textTertiary)
                 }

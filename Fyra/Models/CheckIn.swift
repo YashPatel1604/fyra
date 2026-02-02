@@ -9,6 +9,13 @@ import SwiftData
 enum WeightUnit: String, Codable, CaseIterable {
     case lb
     case kg
+
+    var waistUnitSymbol: String {
+        switch self {
+        case .lb: return "in"
+        case .kg: return "cm"
+        }
+    }
 }
 
 enum AppearanceMode: String, Codable, CaseIterable {
