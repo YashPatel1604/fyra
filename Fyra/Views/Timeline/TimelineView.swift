@@ -14,6 +14,10 @@ struct TimelineView: View {
     @State private var selectedRange: WeightGraphRange = .thirtyDays
     @State private var showInsights = false
     @State private var showAllPhotos = false
+    @State private var visibleCheckInCount = 7
+    @State private var showDayFilterSheet = false
+    @State private var selectedDayFilter = Date()
+    @State private var isDayFilterActive = false
 
     private var settings: UserSettings? { settingsList.first }
     private var weightUnit: WeightUnit { settings?.weightUnit ?? .lb }
@@ -141,6 +145,20 @@ struct TimelineView: View {
                 return lhs.date > rhs.date
             }
     }
+    private var filteredCheckIns: [CheckIn] {
+        guard isDayFilterActive else { return checkIns }
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: selectedDayFilter)
+        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
+        return checkIns.filter { $0.date >= start && $0.date < end }
+    }
+    private var displayedCheckIns: [CheckIn] {
+        guard !isDayFilterActive else { return filteredCheckIns }
+        return Array(filteredCheckIns.prefix(visibleCheckInCount))
+    }
+    private var canShowMoreCheckIns: Bool {
+        !isDayFilterActive && displayedCheckIns.count < filteredCheckIns.count
+    }
 
     var body: some View {
         NavigationStack {
@@ -162,6 +180,9 @@ struct TimelineView: View {
             .toolbar(.hidden, for: .navigationBar)
             .sheet(isPresented: $showAllPhotos) {
                 AllPhotosView(items: allPhotoItems)
+            }
+            .sheet(isPresented: $showDayFilterSheet) {
+                dayFilterSheet
             }
         }
     }
@@ -195,6 +216,7 @@ struct TimelineView: View {
                 rawPoints: rawPoints,
                 weeklyRateText: weeklyRateText,
                 hasEnoughData: hasEnoughWeightData,
+                weightUnit: weightUnit,
                 selectedRange: $selectedRange,
                 showDailyPoints: $showDailyPoints
             )
@@ -219,7 +241,7 @@ struct TimelineView: View {
             Text("No check-ins yet")
                 .font(.headline)
                 .foregroundStyle(NeonTheme.textPrimary)
-            Text("Log a photo or weight on the Check-In tab to see your progress here.")
+            Text("Log a photo or weight to see your progress here.")
                 .font(.subheadline)
                 .foregroundStyle(NeonTheme.textTertiary)
                 .multilineTextAlignment(.center)
@@ -442,6 +464,32 @@ struct TimelineView: View {
         )
     }
 
+    private var dayFilterControl: some View {
+        Menu {
+            Button("Pick specific day") {
+                showDayFilterSheet = true
+            }
+            if isDayFilterActive {
+                Button("Clear day filter") {
+                    clearDayFilter()
+                }
+            }
+        } label: {
+            Text(isDayFilterActive ? filteredDayLabel : "Filter Day")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(NeonTheme.textPrimary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(NeonTheme.surfaceAlt)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(NeonTheme.borderStrong, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
     private var recentCheckIns: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -465,25 +513,92 @@ struct TimelineView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                dayFilterControl
             }
 
-            LazyVStack(spacing: 12) {
-                ForEach(checkIns) { checkIn in
-                    NavigationLink {
-                        CheckInDetailView(checkIn: checkIn)
-                    } label: {
-                        TimelineRowView(
-                            checkIn: checkIn,
-                            weightUnit: weightUnit,
-                            showDailyPoints: showDailyPoints,
-                            weightTrendService: weightTrendService,
-                            isBaseline: settings?.baselineCheckInID == checkIn.id
-                        )
+            if displayedCheckIns.isEmpty {
+                Text("No check-ins on \(filteredDayLabel).")
+                    .font(.subheadline)
+                    .foregroundStyle(NeonTheme.textTertiary)
+                    .padding(.top, 4)
+            } else {
+                LazyVStack(spacing: 12) {
+                    ForEach(displayedCheckIns) { checkIn in
+                        NavigationLink {
+                            CheckInDetailView(checkIn: checkIn)
+                        } label: {
+                            TimelineRowView(
+                                checkIn: checkIn,
+                                weightUnit: weightUnit,
+                                showDailyPoints: showDailyPoints,
+                                weightTrendService: weightTrendService,
+                                isBaseline: settings?.baselineCheckInID == checkIn.id
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
+                }
+            }
+
+            if canShowMoreCheckIns {
+                Button {
+                    visibleCheckInCount = min(visibleCheckInCount + 7, filteredCheckIns.count)
+                } label: {
+                    Text("Show 7 more")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(NeonTheme.textPrimary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(NeonTheme.surfaceAlt)
+                        .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerSmall, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: NeonTheme.cornerSmall, style: .continuous)
+                                .stroke(NeonTheme.borderStrong, lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var dayFilterSheet: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                DatePicker(
+                    "Choose a day",
+                    selection: $selectedDayFilter,
+                    displayedComponents: .date
+                )
+                .datePickerStyle(.graphical)
+                Spacer()
+            }
+            .padding(20)
+            .background(NeonTheme.background)
+            .navigationTitle("Filter by Day")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showDayFilterSheet = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Apply") {
+                        isDayFilterActive = true
+                        showDayFilterSheet = false
+                    }
                 }
             }
         }
+    }
+
+    private var filteredDayLabel: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: selectedDayFilter)
+    }
+
+    private func clearDayFilter() {
+        isDayFilterActive = false
+        visibleCheckInCount = 7
     }
 
     private func formatSignedChange(_ value: Double) -> String {
@@ -713,5 +828,5 @@ private struct AllPhotosView: View {
 
 #Preview {
     TimelineView()
-        .modelContainer(for: [CheckIn.self, UserSettings.self, ProgressPeriod.self], inMemory: true)
+        .modelContainer(for: [CheckIn.self, UserSettings.self, ProgressPeriod.self, WorkoutSession.self], inMemory: true)
 }

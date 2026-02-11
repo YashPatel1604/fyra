@@ -67,8 +67,31 @@ struct WeightGraphView: View {
     let rawPoints: [WeightGraphPoint]
     let weeklyRateText: String?
     let hasEnoughData: Bool
+    let weightUnit: WeightUnit
     @Binding var selectedRange: WeightGraphRange
     @Binding var showDailyPoints: Bool
+
+    private var activePoints: [WeightGraphPoint] {
+        if showDailyPoints, !rawPoints.isEmpty {
+            return rawPoints
+        }
+        return trendPoints
+    }
+
+    private var yDomain: ClosedRange<Double> {
+        let values = activePoints.map(\.value)
+        guard let minValue = values.min(), let maxValue = values.max() else {
+            return 0...1
+        }
+
+        let span = maxValue - minValue
+        let baseMinSpan: Double = weightUnit == .kg ? 0.75 : 1.5
+        let paddedSpan = max(span * 1.35, baseMinSpan)
+        let center = (minValue + maxValue) / 2
+        let lower = center - (paddedSpan / 2)
+        let upper = center + (paddedSpan / 2)
+        return lower...upper
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -135,6 +158,7 @@ struct WeightGraphView: View {
                             }
                         }
                     }
+                    .chartYScale(domain: yDomain)
                     .chartXAxis {
                         AxisMarks(values: .automatic(desiredCount: 5)) { value in
                             AxisGridLine().foregroundStyle(Color.clear)

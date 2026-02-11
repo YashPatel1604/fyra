@@ -11,6 +11,7 @@ import UIKit
 struct CheckInView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \CheckIn.date, order: .reverse) private var allCheckIns: [CheckIn]
+    @Query(sort: \WorkoutSession.date, order: .reverse) private var allWorkouts: [WorkoutSession]
     @Query private var settingsList: [UserSettings]
     @FocusState private var focusedInput: FocusInput?
 
@@ -74,6 +75,13 @@ struct CheckInView: View {
     private var hasInsightsContent: Bool {
         showReturnBanner || showFluctuationBanner || smartReminderMessage != nil || recoveryPlanStatus != nil
     }
+    private var workoutsForCurrentDay: [WorkoutSession] {
+        guard let date = currentCheckIn?.date else { return [] }
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: date)
+        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
+        return allWorkouts.filter { $0.date >= start && $0.date < end }
+    }
 
     var body: some View {
         NavigationStack {
@@ -85,6 +93,7 @@ struct CheckInView: View {
                             insightsCard
                         }
                         weightCard
+                        workoutsCard
                         photosCard
                         optionalDetailsCard
                         saveButton
@@ -416,6 +425,68 @@ struct CheckInView: View {
                 }
             }
             Spacer()
+        }
+        .padding(24)
+        .neonCard()
+    }
+
+    private var workoutsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 12) {
+                NeonIconBadge(systemName: "figure.run", size: 56)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Workouts")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(NeonTheme.textPrimary)
+                    Text("Imported from Apple Health")
+                        .font(.caption)
+                        .foregroundStyle(NeonTheme.textTertiary)
+                }
+            }
+
+            if workoutsForCurrentDay.isEmpty {
+                Text("No workouts logged for this day yet.")
+                    .font(.subheadline)
+                    .foregroundStyle(NeonTheme.textTertiary)
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(workoutsForCurrentDay) { workout in
+                        let activityName = displayActivityName(for: workout.activityName)
+                        HStack(alignment: .top, spacing: 10) {
+                            NeonIconBadge(systemName: workoutIconName(for: activityName), size: 34)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(activityName)
+                                    .font(.subheadline.weight(.bold))
+                                    .foregroundStyle(NeonTheme.textPrimary)
+                                Text(formattedWorkoutTime(workout.date))
+                                    .font(.caption)
+                                    .foregroundStyle(NeonTheme.textTertiary)
+                                HStack(spacing: 8) {
+                                    Text(workoutDurationText(workout.durationMinutes))
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(NeonTheme.textSecondary)
+                                    if let kcal = workout.activeEnergyKcal {
+                                        Text("\(Int(kcal.rounded())) kcal")
+                                            .font(.caption)
+                                            .foregroundStyle(NeonTheme.textSecondary)
+                                    }
+                                    Text(workout.sourceName)
+                                        .font(.caption2)
+                                        .foregroundStyle(NeonTheme.textTertiary)
+                                }
+                            }
+                            Spacer()
+                        }
+                        .padding(12)
+                        .background(NeonTheme.surfaceAlt)
+                        .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                                .stroke(NeonTheme.borderStrong, lineWidth: 1)
+                        )
+                    }
+                }
+            }
         }
         .padding(24)
         .neonCard()
@@ -843,6 +914,38 @@ struct CheckInView: View {
         updateReturnBanner()
     }
 
+    private func workoutIconName(for activity: String) -> String {
+        let name = activity.lowercased()
+        if name.contains("run") { return "figure.run" }
+        if name.contains("walk") || name.contains("hike") { return "figure.walk" }
+        if name.contains("cycle") { return "bicycle" }
+        if name.contains("swim") { return "figure.pool.swim" }
+        if name.contains("row") { return "figure.rower" }
+        if name.contains("yoga") { return "figure.yoga" }
+        if name.contains("strength") { return "dumbbell" }
+        return "figure.mixed.cardio"
+    }
+
+    private func displayActivityName(for activity: String) -> String {
+        if activity.lowercased().contains("rawvalue") {
+            return "Workout"
+        }
+        return activity
+    }
+
+    private func workoutDurationText(_ durationMinutes: Double) -> String {
+        let hours = Int(durationMinutes) / 60
+        let mins = Int(durationMinutes) % 60
+        return hours > 0 ? "\(hours)h \(mins)m" : "\(mins)m"
+    }
+
+    private func formattedWorkoutTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        return formatter.string(from: date)
+    }
+
     private func maybeStartRecoveryPlan() {
         guard let settings else { return }
         let shouldStart = ProgressSupportService.shouldStartRecoveryPlan(
@@ -873,5 +976,5 @@ struct CheckInView: View {
 
 #Preview {
     CheckInView()
-        .modelContainer(for: [CheckIn.self, UserSettings.self], inMemory: true)
+        .modelContainer(for: [CheckIn.self, UserSettings.self, WorkoutSession.self], inMemory: true)
 }

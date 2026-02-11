@@ -6,6 +6,13 @@
     "object" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/WeightTrendService.o",
     "swift-dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/WeightTrendService.swiftdeps"
   },
+  "/Users/yash/Documents/Fyra/Fyra/Services/WorkoutImportService.swift" : {
+    "const-values" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/WorkoutImportService.swiftconstvalues",
+    "dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/WorkoutImportService.d",
+    "diagnostics" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/WorkoutImportService.dia",
+    "object" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/WorkoutImportService.o",
+    "swift-dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/WorkoutImportService.swiftdeps"
+  },
   "/Users/yash/Documents/Fyra/Fyra/Theme/AppTheme.swift" : {
     "const-values" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/AppTheme.swiftconstvalues",
     "dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/AppTheme.d",
@@ -19,12 +26,5 @@
     "diagnostics" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/CheckInView.dia",
     "object" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/CheckInView.o",
     "swift-dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/CheckInView.swiftdeps"
-  },
-  "/Users/yash/Documents/Fyra/Fyra/Views/Compare/CompareView.swift" : {
-    "const-values" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/CompareView.swiftconstvalues",
-    "dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/CompareView.d",
-    "diagnostics" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/CompareView.dia",
-    "object" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/CompareView.o",
-    "swift-dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/CompareView.swiftdeps"
   }
 }

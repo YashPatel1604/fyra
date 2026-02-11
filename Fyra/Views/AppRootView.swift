@@ -11,6 +11,7 @@ import UIKit
 
 struct AppRootView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Query private var settingsList: [UserSettings]
     @Query(sort: \ProgressPeriod.startDate, order: .forward) private var periods: [ProgressPeriod]
     @State private var selectedTab = 0
@@ -81,6 +82,21 @@ struct AppRootView: View {
                     }
                 }
             }
+            .task(id: settingsList.first?.appleHealthWorkoutImportEnabled ?? false) {
+                let enabled = settingsList.first?.appleHealthWorkoutImportEnabled ?? false
+                if enabled {
+                    await configureWorkoutAutoImport()
+                    await importWorkoutsIfEnabled()
+                } else {
+                    await HealthSyncService.stopWorkoutObserver()
+                }
+            }
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active else { return }
+                Task { @MainActor in
+                    await importWorkoutsIfEnabled()
+                }
+            }
 
             if showSplash {
                 SplashView()
@@ -96,11 +112,27 @@ struct AppRootView: View {
             }
         }
     }
+
+    @MainActor
+    private func importWorkoutsIfEnabled() async {
+        guard let settings = settingsList.first, settings.appleHealthWorkoutImportEnabled else { return }
+        _ = await WorkoutImportService.importFromAppleHealth(
+            modelContext: modelContext,
+            settings: settings
+        )
+    }
+
+    @MainActor
+    private func configureWorkoutAutoImport() async {
+        _ = await HealthSyncService.startWorkoutObserver {
+            await importWorkoutsIfEnabled()
+        }
+    }
 }
 
 #Preview {
     AppRootView()
-        .modelContainer(for: [CheckIn.self, UserSettings.self, ProgressPeriod.self], inMemory: true)
+        .modelContainer(for: [CheckIn.self, UserSettings.self, ProgressPeriod.self, WorkoutSession.self], inMemory: true)
 }
 
 extension View {

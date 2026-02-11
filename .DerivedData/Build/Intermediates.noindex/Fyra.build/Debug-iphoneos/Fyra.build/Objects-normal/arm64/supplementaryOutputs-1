@@ -20,6 +20,13 @@
     "object" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/UserSettings.o",
     "swift-dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/UserSettings.swiftdeps"
   },
+  "/Users/yash/Documents/Fyra/Fyra/Models/WorkoutSession.swift" : {
+    "const-values" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/WorkoutSession.swiftconstvalues",
+    "dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/WorkoutSession.d",
+    "diagnostics" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/WorkoutSession.dia",
+    "object" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/WorkoutSession.o",
+    "swift-dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/WorkoutSession.swiftdeps"
+  },
   "/Users/yash/Documents/Fyra/Fyra/Services/BaselineService.swift" : {
     "const-values" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/BaselineService.swiftconstvalues",
     "dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/BaselineService.d",

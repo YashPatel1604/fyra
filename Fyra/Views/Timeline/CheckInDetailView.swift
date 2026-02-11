@@ -12,6 +12,7 @@ struct CheckInDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Bindable var checkIn: CheckIn
+    @Query(sort: \WorkoutSession.date, order: .reverse) private var allWorkouts: [WorkoutSession]
     @Query private var settingsList: [UserSettings]
 
     @State private var weightText: String = ""
@@ -32,6 +33,12 @@ struct CheckInDetailView: View {
     private var waistUnit: String { weightUnit.waistUnitSymbol }
     private var photoMode: PhotoMode { settings?.photoMode ?? .single }
     private var isBaseline: Bool { BaselineService.isBaseline(checkIn, settings: settings) }
+    private var workoutsForDay: [WorkoutSession] {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: checkIn.date)
+        guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
+        return allWorkouts.filter { $0.date >= start && $0.date < end }
+    }
 
     var body: some View {
         ScrollView {
@@ -56,6 +63,7 @@ struct CheckInDetailView: View {
                 baselineSection
 
                 weightSection
+                workoutsSection
                 poseSection
                 tagsSection
                 waistSection
@@ -186,6 +194,53 @@ struct CheckInDetailView: View {
                 .font(.title2.weight(.medium))
                 .padding(AppTheme.cardPadding)
                 .background(AppTheme.inputBackground)
+        }
+    }
+
+    private var workoutsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            AppTheme.sectionLabel("Workouts")
+            if workoutsForDay.isEmpty {
+                Text("No workouts imported for this day.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(workoutsForDay) { workout in
+                        let activityName = displayActivityName(for: workout.activityName)
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: workoutIconName(for: activityName))
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 22, alignment: .center)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(activityName)
+                                    .font(.subheadline.weight(.semibold))
+                                Text(formattedWorkoutTime(workout.date))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                HStack(spacing: 8) {
+                                    Text(workoutDurationText(workout.durationMinutes))
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                    if let kcal = workout.activeEnergyKcal {
+                                        Text("\(Int(kcal.rounded())) kcal")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Text(workout.sourceName)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                        }
+                        .padding(12)
+                        .background(AppTheme.inputBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall, style: .continuous))
+                    }
+                }
+            }
         }
     }
 
@@ -337,11 +392,43 @@ struct CheckInDetailView: View {
         return formatter.string(from: date)
     }
 
+    private func formattedWorkoutTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        return formatter.string(from: date)
+    }
+
     private func formatWeight(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.minimumFractionDigits = 0
         formatter.maximumFractionDigits = 1
         return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
+    }
+
+    private func workoutDurationText(_ durationMinutes: Double) -> String {
+        let hours = Int(durationMinutes) / 60
+        let mins = Int(durationMinutes) % 60
+        return hours > 0 ? "\(hours)h \(mins)m" : "\(mins)m"
+    }
+
+    private func workoutIconName(for activity: String) -> String {
+        let name = activity.lowercased()
+        if name.contains("run") { return "figure.run" }
+        if name.contains("walk") || name.contains("hike") { return "figure.walk" }
+        if name.contains("cycle") { return "bicycle" }
+        if name.contains("swim") { return "figure.pool.swim" }
+        if name.contains("row") { return "figure.rower" }
+        if name.contains("yoga") { return "figure.yoga" }
+        if name.contains("strength") { return "dumbbell" }
+        return "figure.mixed.cardio"
+    }
+
+    private func displayActivityName(for activity: String) -> String {
+        if activity.lowercased().contains("rawvalue") {
+            return "Workout"
+        }
+        return activity
     }
 
     private func presentLibrary(for pose: Pose) {
@@ -427,6 +514,6 @@ struct CheckInDetailView: View {
 #Preview {
     NavigationStack {
         CheckInDetailView(checkIn: CheckIn(date: Date()))
-            .modelContainer(for: [CheckIn.self, UserSettings.self], inMemory: true)
+            .modelContainer(for: [CheckIn.self, UserSettings.self, WorkoutSession.self], inMemory: true)
     }
 }

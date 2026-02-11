@@ -19,5 +19,12 @@
     "diagnostics" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/FyraApp.dia",
     "object" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/FyraApp.o",
     "swift-dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/FyraApp.swiftdeps"
+  },
+  "/Users/yash/Documents/Fyra/Fyra/Views/AppRootView.swift" : {
+    "const-values" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/AppRootView.swiftconstvalues",
+    "dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/AppRootView.d",
+    "diagnostics" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/AppRootView.dia",
+    "object" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/AppRootView.o",
+    "swift-dependencies" : "/Users/yash/Documents/Fyra/.DerivedData/Build/Intermediates.noindex/Fyra.build/Debug-iphoneos/Fyra.build/Objects-normal/arm64/AppRootView.swiftdeps"
   }
 }

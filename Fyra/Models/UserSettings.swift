@@ -25,6 +25,10 @@ final class UserSettings {
     var notificationRemindersEnabled: Bool = false
     /// When true, sync saved weights to Apple Health.
     var appleHealthSyncEnabled: Bool = false
+    /// When true, import workouts from Apple Health.
+    var appleHealthWorkoutImportEnabled: Bool = false
+    /// Timestamp of last successful workout import.
+    var lastWorkoutImportDate: Date?
     /// When true, Compare view hides weight delta.
     var hideWeightDeltaInCompare: Bool = false
     /// Optional goal range (min/max); unit follows weightUnit for weight goals.
@@ -67,6 +71,8 @@ final class UserSettings {
         smartRemindersEnabled: Bool = true,
         notificationRemindersEnabled: Bool = false,
         appleHealthSyncEnabled: Bool = false,
+        appleHealthWorkoutImportEnabled: Bool = false,
+        lastWorkoutImportDate: Date? = nil,
         hideWeightDeltaInCompare: Bool = false,
         goalMinWeight: Double? = nil,
         goalMaxWeight: Double? = nil,
@@ -95,6 +101,8 @@ final class UserSettings {
         self.smartRemindersEnabled = smartRemindersEnabled
         self.notificationRemindersEnabled = notificationRemindersEnabled
         self.appleHealthSyncEnabled = appleHealthSyncEnabled
+        self.appleHealthWorkoutImportEnabled = appleHealthWorkoutImportEnabled
+        self.lastWorkoutImportDate = lastWorkoutImportDate
         self.hideWeightDeltaInCompare = hideWeightDeltaInCompare
         self.goalMinWeight = goalMinWeight
         self.goalMaxWeight = goalMaxWeight

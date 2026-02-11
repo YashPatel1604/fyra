@@ -9,6 +9,7 @@ import SwiftData
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \CheckIn.date, order: .forward) private var allCheckIns: [CheckIn]
+    @Query(sort: \WorkoutSession.date, order: .reverse) private var allWorkouts: [WorkoutSession]
     @Query private var settingsList: [UserSettings]
     @Query(sort: \ProgressPeriod.startDate, order: .forward) private var periods: [ProgressPeriod]
 
@@ -329,7 +330,11 @@ struct SettingsView: View {
     }
 
     private func healthSyncCard(settings: UserSettings) -> some View {
-        let isHealthAvailable = HealthSyncService.isAvailable
+        let isWeightSyncAvailable = HealthSyncService.isAvailable
+        let isWorkoutImportAvailable = HealthSyncService.isWorkoutImportAvailable
+        let workoutSyncDescription = settings.lastWorkoutImportDate.map { date in
+            "Imported \(allWorkouts.count) workouts. Last import: \(formattedDate(date))"
+        } ?? "Automatically import workouts from Apple Health (including WHOOP if WHOOP is connected to Health)."
         return VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
                 NeonIconBadge(systemName: "heart.text.square", size: 48)
@@ -337,7 +342,7 @@ struct SettingsView: View {
                     Text("Apple Health")
                         .font(.headline.weight(.bold))
                         .foregroundStyle(NeonTheme.textPrimary)
-                    Text("Write saved weight entries to Health")
+                    Text("Sync weight and import workouts")
                         .font(.caption)
                         .foregroundStyle(NeonTheme.textTertiary)
                 }
@@ -370,7 +375,7 @@ struct SettingsView: View {
                     }
                 ))
             }
-            .disabled(!isHealthAvailable)
+            .disabled(!isWeightSyncAvailable)
             .padding(14)
             .background(NeonTheme.surfaceAlt)
             .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
@@ -379,8 +384,75 @@ struct SettingsView: View {
                     .stroke(NeonTheme.borderStrong, lineWidth: 1)
             )
 
-            if !isHealthAvailable {
-                Text("Apple Health is not available on this device.")
+            HStack {
+                Text("Import workouts from Apple Health")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(NeonTheme.textPrimary)
+                Spacer()
+                NeonToggle(isOn: Binding(
+                    get: { settings.appleHealthWorkoutImportEnabled },
+                    set: { newValue in
+                        if !newValue {
+                            settings.appleHealthWorkoutImportEnabled = false
+                            try? modelContext.save()
+                            return
+                        }
+                        Task { @MainActor in
+                            let authorized = await HealthSyncService.requestWorkoutReadAccess()
+                            settings.appleHealthWorkoutImportEnabled = authorized
+                            try? modelContext.save()
+                            if !authorized {
+                                permissionAlertMessage = "Please allow Health access in iOS Settings to import workouts."
+                                return
+                            }
+                            await importWorkoutsFromHealth(settings: settings)
+                        }
+                    }
+                ))
+            }
+            .disabled(!isWorkoutImportAvailable)
+            .padding(14)
+            .background(NeonTheme.surfaceAlt)
+            .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                    .stroke(NeonTheme.borderStrong, lineWidth: 1)
+            )
+
+            Button {
+                Task { @MainActor in
+                    await importWorkoutsFromHealth(settings: settings)
+                }
+            } label: {
+                HStack {
+                    Text("Import Workouts Now")
+                        .font(.subheadline.weight(.bold))
+                    Spacer()
+                    Image(systemName: "arrow.down.circle")
+                }
+                .foregroundStyle(NeonTheme.textPrimary)
+                .padding(12)
+                .background(NeonTheme.surfaceAlt)
+                .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                        .stroke(NeonTheme.borderStrong, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+            .disabled(!settings.appleHealthWorkoutImportEnabled || !isWorkoutImportAvailable)
+
+            Text(workoutSyncDescription)
+                .font(.caption)
+                .foregroundStyle(NeonTheme.textTertiary)
+
+            if !isWeightSyncAvailable {
+                Text("Apple Health weight sync is not available on this device.")
+                    .font(.caption)
+                    .foregroundStyle(NeonTheme.textTertiary)
+            }
+            if !isWorkoutImportAvailable {
+                Text("Apple Health workout import is not available on this device.")
                     .font(.caption)
                     .foregroundStyle(NeonTheme.textTertiary)
             }
@@ -722,6 +794,24 @@ struct SettingsView: View {
         }
         try? modelContext.save()
     }
+
+    @MainActor
+    private func importWorkoutsFromHealth(settings: UserSettings) async {
+        let result = await WorkoutImportService.importFromAppleHealth(
+            modelContext: modelContext,
+            settings: settings
+        )
+        switch result {
+        case .imported(let count):
+            if count > 0 {
+                permissionAlertMessage = "Imported \(count) new workouts from Apple Health."
+            }
+        case .unauthorized:
+            permissionAlertMessage = "Please allow Health access in iOS Settings to import workouts."
+        case .unavailable:
+            permissionAlertMessage = "Apple Health workout import is not available on this device."
+        }
+    }
 }
 
 struct ExportCompareImageSheet: View {
@@ -813,5 +903,5 @@ struct ExportCompareImageSheet: View {
 
 #Preview {
     SettingsView()
-        .modelContainer(for: [CheckIn.self, UserSettings.self, ProgressPeriod.self], inMemory: true)
+        .modelContainer(for: [CheckIn.self, UserSettings.self, ProgressPeriod.self, WorkoutSession.self], inMemory: true)
 }
