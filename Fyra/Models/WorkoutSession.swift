@@ -6,6 +6,13 @@
 import Foundation
 import SwiftData
 
+enum WorkoutFocus {
+    case strength
+    case cardio
+    case recovery
+    case mixed
+}
+
 @Model
 final class WorkoutSession {
     var id: UUID
@@ -33,5 +40,66 @@ final class WorkoutSession {
         self.durationMinutes = durationMinutes
         self.activeEnergyKcal = activeEnergyKcal
         self.sourceName = sourceName
+    }
+}
+
+extension WorkoutSession {
+    var focus: WorkoutFocus {
+        Self.focus(for: activityName)
+    }
+
+    static func focus(for activityName: String) -> WorkoutFocus {
+        let name = activityName.lowercased()
+
+        let strengthKeywords = [
+            "strength",
+            "resistance",
+            "weight training",
+            "weightlifting",
+            "powerlifting",
+            "bodybuilding",
+            "lifting"
+        ]
+        if strengthKeywords.contains(where: name.contains) {
+            return .strength
+        }
+
+        let recoveryKeywords = [
+            "yoga",
+            "pilates",
+            "stretch",
+            "mobility",
+            "tai chi",
+            "mind and body"
+        ]
+        if recoveryKeywords.contains(where: name.contains) {
+            return .recovery
+        }
+
+        let cardioKeywords = [
+            "run",
+            "walk",
+            "hike",
+            "cycle",
+            "bike",
+            "swim",
+            "row",
+            "elliptical",
+            "stair",
+            "cardio",
+            "boxing",
+            "dance",
+            "soccer",
+            "basketball",
+            "tennis",
+            "pickleball",
+            "ski",
+            "hiit"
+        ]
+        if cardioKeywords.contains(where: name.contains) {
+            return .cardio
+        }
+
+        return .mixed
     }
 }

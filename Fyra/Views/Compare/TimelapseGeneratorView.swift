@@ -29,7 +29,7 @@ struct TimelapseGeneratorView: View {
 
     @State private var selectedPose: Pose
     @State private var rangeOption: TimelapseRangeOption = .currentPeriod
-    @State private var frameDuration: Double = 0.5
+    @State private var frameDuration: Double = 0.1
     @State private var overlayWeight: Bool = false
     @State private var isGenerating = false
     @State private var progressText: String?
@@ -109,9 +109,9 @@ struct TimelapseGeneratorView: View {
 
                 Section("Frame duration") {
                     Picker("Frame duration", selection: $frameDuration) {
-                        Text("0.25s").tag(0.25)
-                        Text("0.5s").tag(0.5)
-                        Text("1.0s").tag(1.0)
+                        Text("0.05s (20 fps)").tag(0.05)
+                        Text("0.1s (10 fps)").tag(0.1)
+                        Text("0.25s (4 fps)").tag(0.25)
                     }
                     .pickerStyle(.segmented)
                 }

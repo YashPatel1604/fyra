@@ -22,6 +22,9 @@ enum TimelapseError: Error {
 }
 
 enum TimelapseService {
+    private static let minFrameDuration: Double = 0.05
+    private static let maxFrameDuration: Double = 0.25
+
     static func frames(
         checkIns: [CheckIn],
         pose: Pose,
@@ -109,7 +112,8 @@ enum TimelapseService {
         writer.startWriting()
         writer.startSession(atSourceTime: .zero)
 
-        let frameTime = CMTime(seconds: frameDuration, preferredTimescale: 600)
+        let boundedDuration = min(max(frameDuration, minFrameDuration), maxFrameDuration)
+        let frameTime = CMTime(seconds: boundedDuration, preferredTimescale: 600)
         var frameCount: Int32 = 0
         var failure: Error?
         for (index, frame) in frames.enumerated() {

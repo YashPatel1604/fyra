@@ -8,6 +8,7 @@ import SwiftData
 
 struct TimelineView: View {
     @Query(sort: \CheckIn.date, order: .reverse) private var checkIns: [CheckIn]
+    @Query(sort: \WorkoutSession.date, order: .reverse) private var workouts: [WorkoutSession]
     @Query private var settingsList: [UserSettings]
     @Query(sort: \ProgressPeriod.startDate, order: .forward) private var periods: [ProgressPeriod]
     @State private var showDailyPoints: Bool = false
@@ -80,12 +81,13 @@ struct TimelineView: View {
     private var plateauMessage: String? {
         ProgressSupportService.plateauMessage(
             checkIns: checkIns,
+            workouts: workouts,
             goalType: settings?.goalType ?? .none,
             unit: weightUnit
         )
     }
     private var weeklySummary: WeeklySummary {
-        ProgressSupportService.weeklySummary(checkIns: checkIns, unit: weightUnit)
+        ProgressSupportService.weeklySummary(checkIns: checkIns, workouts: workouts, unit: weightUnit)
     }
     private var milestoneStatus: MilestoneStatus? {
         guard let settings else { return nil }
@@ -122,8 +124,37 @@ struct TimelineView: View {
             unit: weightUnit
         )
     }
+    private var workoutContextMessage: String? {
+        InsightService.workoutContext(
+            workouts: workouts,
+            goalType: settings?.goalType ?? .none
+        )
+    }
     private var hasInsightsContent: Bool {
-        milestoneStatus != nil || weeklySummary.loggedDays > 0 || measurementNudgeMessage != nil || paceContextMessage != nil || plateauMessage != nil
+        milestoneStatus != nil || weeklySummary.loggedDays > 0 || measurementNudgeMessage != nil || paceContextMessage != nil || workoutContextMessage != nil || plateauMessage != nil
+    }
+    private var latestWaistEntry: (date: Date, value: Double)? {
+        guard let checkIn = checkIns.first(where: { $0.waistMeasurement != nil }),
+              let value = checkIn.waistMeasurement else { return nil }
+        return (checkIn.date, value)
+    }
+    private var latestWinsEntry: (date: Date, wins: [String])? {
+        for checkIn in checkIns {
+            let wins = displayTags(for: checkIn)
+            if !wins.isEmpty {
+                return (checkIn.date, wins)
+            }
+        }
+        return nil
+    }
+    private var latestNoteEntry: (date: Date, note: String)? {
+        for checkIn in checkIns {
+            let note = normalizedNote(for: checkIn)
+            if !note.isEmpty {
+                return (checkIn.date, note)
+            }
+        }
+        return nil
     }
     private var allPhotoItems: [TimelinePhotoItem] {
         checkIns
@@ -224,6 +255,7 @@ struct TimelineView: View {
             if hasInsightsContent {
                 insightsPanelCard
             }
+            optionalEntriesCard
             recentCheckIns
         }
     }
@@ -319,7 +351,7 @@ struct TimelineView: View {
                         milestoneCard(status: milestoneStatus)
                     }
                     weeklySummaryCard
-                    if measurementNudgeMessage != nil || paceContextMessage != nil || plateauMessage != nil {
+                    if measurementNudgeMessage != nil || paceContextMessage != nil || workoutContextMessage != nil || plateauMessage != nil {
                         insightsCard
                     }
                 }
@@ -403,8 +435,20 @@ struct TimelineView: View {
                 summaryPill(title: "Photos", value: "\(weeklySummary.photoDays)")
                 summaryPill(title: "Wins", value: "\(weeklySummary.winsLogged)")
             }
+            if weeklySummary.workoutCount > 0 {
+                HStack(spacing: 8) {
+                    summaryPill(title: "Workouts", value: "\(weeklySummary.workoutCount)")
+                    summaryPill(title: "Minutes", value: "\(weeklySummary.workoutMinutes)m")
+                    summaryPill(title: "Strength", value: "\(weeklySummary.strengthSessions)")
+                }
+            }
             if let change = weeklySummary.trendChange {
                 Text("Trend change: \(formatSignedChange(change)) \(weightUnit.rawValue)")
+                    .font(.caption)
+                    .foregroundStyle(NeonTheme.textSecondary)
+            }
+            if weeklySummary.workoutCount > 0 {
+                Text("Imported workouts covered \(weeklySummary.workoutDays) days this week.")
                     .font(.caption)
                     .foregroundStyle(NeonTheme.textSecondary)
             }
@@ -448,6 +492,11 @@ struct TimelineView: View {
                             .font(.caption)
                             .foregroundStyle(NeonTheme.textSecondary)
                     }
+                    if let msg = workoutContextMessage {
+                        Text(msg)
+                            .font(.caption)
+                            .foregroundStyle(NeonTheme.textSecondary)
+                    }
                     if let msg = plateauMessage {
                         Text(msg)
                             .font(.caption)
@@ -461,6 +510,72 @@ struct TimelineView: View {
             background: NeonTheme.surface,
             border: NeonTheme.accent.opacity(0.3),
             shadowColor: NeonTheme.accent.opacity(0.2)
+        )
+    }
+
+    private var optionalEntriesCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                NeonIconBadge(systemName: "list.bullet.clipboard", size: 40)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Latest Optional Entries")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(NeonTheme.textPrimary)
+                    Text("Waist, wins, and notes")
+                        .font(.caption)
+                        .foregroundStyle(NeonTheme.textTertiary)
+                }
+            }
+
+            VStack(spacing: 10) {
+                optionalEntryRow(
+                    title: "Waist",
+                    value: latestWaistEntry.map { "\(formatWeight($0.value)) \(weightUnit.waistUnitSymbol)" } ?? "No waist entry yet",
+                    date: latestWaistEntry?.date
+                )
+                optionalEntryRow(
+                    title: "Wins",
+                    value: latestWinsEntry.map { $0.wins.joined(separator: ", ") } ?? "No non-scale wins yet",
+                    date: latestWinsEntry?.date
+                )
+                optionalEntryRow(
+                    title: "Note",
+                    value: latestNoteEntry.map { truncated($0.note, maxLength: 90) } ?? "No notes yet",
+                    date: latestNoteEntry?.date
+                )
+            }
+        }
+        .padding(18)
+        .neonCard()
+    }
+
+    private func optionalEntryRow(title: String, value: String, date: Date?) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(NeonTheme.textTertiary)
+                .frame(width: 44, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(value)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(NeonTheme.textPrimary)
+                    .lineLimit(2)
+                if let date {
+                    Text("Last logged \(formattedEntryDate(date))")
+                        .font(.caption2)
+                        .foregroundStyle(NeonTheme.textTertiary)
+                }
+            }
+
+            Spacer()
+        }
+        .padding(12)
+        .background(NeonTheme.surfaceAlt)
+        .clipShape(RoundedRectangle(cornerRadius: NeonTheme.cornerSmall, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: NeonTheme.cornerSmall, style: .continuous)
+                .stroke(NeonTheme.borderStrong, lineWidth: 1)
         )
     }
 
@@ -616,6 +731,33 @@ struct TimelineView: View {
         return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 
+    private func formattedEntryDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: date)
+    }
+
+    private func normalizedNote(for checkIn: CheckIn) -> String {
+        checkIn.note?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    private func displayTags(for checkIn: CheckIn) -> [String] {
+        let display = checkIn.tagRawValues.compactMap { raw -> String? in
+            if raw.hasPrefix("custom:") {
+                let custom = String(raw.dropFirst(7)).trimmingCharacters(in: .whitespacesAndNewlines)
+                return custom.isEmpty ? nil : custom
+            }
+            guard let tag = CheckInTag(rawValue: raw), tag != .custom else { return nil }
+            return tag.displayName
+        }
+        return Array(Set(display)).sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
+    private func truncated(_ text: String, maxLength: Int) -> String {
+        guard text.count > maxLength else { return text }
+        return "\(text.prefix(maxLength - 1))…"
+    }
+
     private func poseSortRank(_ pose: Pose) -> Int {
         switch pose {
         case .front: return 0
@@ -727,6 +869,7 @@ private struct TimelinePhotoItem: Identifiable {
 private struct AllPhotosView: View {
     @Environment(\.dismiss) private var dismiss
     let items: [TimelinePhotoItem]
+    @State private var selectedItem: ProgressPhotoViewerItem?
 
     private let columns = [
         GridItem(.flexible(), spacing: 10),
@@ -758,6 +901,9 @@ private struct AllPhotosView: View {
                     Button("Done") { dismiss() }
                 }
             }
+            .fullScreenCover(item: $selectedItem) { item in
+                ProgressPhotoViewer(item: item)
+            }
         }
     }
 
@@ -779,49 +925,65 @@ private struct AllPhotosView: View {
     }
 
     private func tile(for item: TimelinePhotoItem) -> some View {
-        ZStack(alignment: .bottomLeading) {
-            if let image = ImageStore.shared.loadImage(path: item.path) {
-                image
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                Rectangle()
-                    .fill(NeonTheme.surfaceAlt)
-                    .overlay {
-                        Image(systemName: "photo")
-                            .foregroundStyle(NeonTheme.textTertiary)
-                    }
-            }
-
-            LinearGradient(
-                colors: [Color.black.opacity(0.0), Color.black.opacity(0.55)],
-                startPoint: .top,
-                endPoint: .bottom
+        Button {
+            selectedItem = ProgressPhotoViewerItem(
+                id: item.id,
+                path: item.path,
+                title: fullDate(item.date),
+                subtitle: item.pose.displayName
             )
+        } label: {
+            ZStack(alignment: .bottomLeading) {
+                if let image = ImageStore.shared.loadImage(path: item.path) {
+                    image
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Rectangle()
+                        .fill(NeonTheme.surfaceAlt)
+                        .overlay {
+                            Image(systemName: "photo")
+                                .foregroundStyle(NeonTheme.textTertiary)
+                        }
+                }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(shortDate(item.date))
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.white)
-                Text(item.pose.displayName)
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.9))
+                LinearGradient(
+                    colors: [Color.black.opacity(0.0), Color.black.opacity(0.55)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(shortDate(item.date))
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.white)
+                    Text(item.pose.displayName)
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.9))
+                }
+                .padding(8)
             }
-            .padding(8)
+            .frame(maxWidth: .infinity)
+            .aspectRatio(3.0 / 4.0, contentMode: .fit)
+            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(NeonTheme.border, lineWidth: 1)
+            )
         }
-        .frame(maxWidth: .infinity)
-        .aspectRatio(3.0 / 4.0, contentMode: .fit)
-        .clipped()
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(NeonTheme.border, lineWidth: 1)
-        )
+        .buttonStyle(.plain)
     }
 
     private func shortDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d"
+        return formatter.string(from: date)
+    }
+    
+    private func fullDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
         return formatter.string(from: date)
     }
 }

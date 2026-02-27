@@ -16,6 +16,10 @@ struct WeeklySummary {
     let loggedDays: Int
     let photoDays: Int
     let winsLogged: Int
+    let workoutDays: Int
+    let workoutCount: Int
+    let workoutMinutes: Int
+    let strengthSessions: Int
     let trendChange: Double?
 }
 
@@ -144,6 +148,7 @@ enum ProgressSupportService {
 
     static func plateauMessage(
         checkIns: [CheckIn],
+        workouts: [WorkoutSession],
         goalType: GoalType,
         unit: WeightUnit,
         now: Date = Date(),
@@ -175,13 +180,31 @@ enum ProgressSupportService {
             .map { calendar.startOfDay(for: $0.date) }).count
         guard consistencyDays >= 4 else { return nil }
 
+        let recentWorkouts = workouts.filter { $0.date >= recentWindowStart && $0.date <= now }
+        let workoutMinutes = recentWorkouts.reduce(0) { $0 + $1.durationMinutes }
+        let strengthSessions = recentWorkouts.filter { $0.focus == .strength }.count
+
         switch goalType {
         case .loseWeight:
-            return "Trend looks flat for ~2 weeks. Try one small shift this week: +1k daily steps or tighter weekend portions."
-        case .gainWeight, .gainMuscle:
-            return "Trend looks flat for ~2 weeks. Try adding ~150-200 calories and keep protein consistent."
+            if workoutMinutes < 90 {
+                return "Trend looks flat for ~2 weeks. Imported workouts show light activity lately, so 2-3 extra walks or short sessions could be the easiest lever."
+            }
+            return "Trend looks flat for ~2 weeks. Imported workouts look consistent, so the next lever is usually intake, recovery, or weekend portions."
+        case .gainWeight:
+            if strengthSessions < 2 {
+                return "Trend looks flat for ~2 weeks. Imported workouts show limited lifting lately - add 2-3 hard strength sessions before pushing calories much higher."
+            }
+            return "Trend looks flat for ~2 weeks. Training is showing up, so the next lever is usually a small calorie increase and steady protein."
+        case .gainMuscle:
+            if strengthSessions < 3 {
+                return "Trend looks flat for ~2 weeks. Imported workouts show limited lifting volume - aim for 3+ quality strength sessions before changing too much else."
+            }
+            return "Trend looks flat for ~2 weeks. Strength work looks consistent, so a small calorie bump and better recovery are the next usual levers."
         case .recomposition:
-            return "Scale trend is flat. That can happen during recomposition - keep lifting and track waist/photos."
+            if strengthSessions < 2 {
+                return "Scale trend is flat. Imported workouts show little lifting lately - for recomposition, anchor the week with 2-4 strength sessions and keep tracking waist/photos."
+            }
+            return "Scale trend is flat. With lifting in place, check waist/photos and recovery - recomposition often shows up there before the scale."
         case .none:
             return nil
         }
@@ -189,6 +212,7 @@ enum ProgressSupportService {
 
     static func weeklySummary(
         checkIns: [CheckIn],
+        workouts: [WorkoutSession],
         unit: WeightUnit,
         now: Date = Date(),
         calendar: Calendar = .current
@@ -201,6 +225,12 @@ enum ProgressSupportService {
             partialResult + checkIn.tagRawValues.count
         }
 
+        let workoutWindow = workouts.filter { $0.date >= start && $0.date <= now }
+        let workoutDayCount = Set(workoutWindow.map { calendar.startOfDay(for: $0.date) }).count
+        let workoutCount = workoutWindow.count
+        let workoutMinutes = Int(workoutWindow.reduce(0) { $0 + $1.durationMinutes }.rounded())
+        let strengthSessions = workoutWindow.filter { $0.focus == .strength }.count
+
         let weighted = window.filter { $0.weight != nil }
         let trendService = WeightTrendService(checkIns: weighted, unit: unit)
         let trendChange = trendService.trendChange()
@@ -211,8 +241,26 @@ enum ProgressSupportService {
             loggedDays: loggedDayCount,
             photoDays: photoDayCount,
             winsLogged: winsCount,
+            workoutDays: workoutDayCount,
+            workoutCount: workoutCount,
+            workoutMinutes: workoutMinutes,
+            strengthSessions: strengthSessions,
             trendChange: trendChange
         )
+    }
+
+    static func recentWorkoutSummary(
+        workouts: [WorkoutSession],
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> (count: Int, days: Int, minutes: Int, strengthSessions: Int, cardioSessions: Int) {
+        let start = calendar.date(byAdding: .day, value: -6, to: calendar.startOfDay(for: now)) ?? now
+        let window = workouts.filter { $0.date >= start && $0.date <= now }
+        let days = Set(window.map { calendar.startOfDay(for: $0.date) }).count
+        let minutes = Int(window.reduce(0) { $0 + $1.durationMinutes }.rounded())
+        let strengthSessions = window.filter { $0.focus == .strength }.count
+        let cardioSessions = window.filter { $0.focus == .cardio }.count
+        return (window.count, days, minutes, strengthSessions, cardioSessions)
     }
 
     static func milestoneStatus(

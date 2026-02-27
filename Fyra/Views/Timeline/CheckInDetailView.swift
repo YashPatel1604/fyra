@@ -26,6 +26,7 @@ struct CheckInDetailView: View {
     @State private var showImagePicker: Bool = false
     @State private var showCameraPermissionAlert: Bool = false
     @State private var showCameraUnavailableAlert: Bool = false
+    @State private var selectedPhotoViewerItem: ProgressPhotoViewerItem?
     @State private var hasChanges: Bool = false
 
     private var settings: UserSettings? { settingsList.first }
@@ -108,6 +109,9 @@ struct CheckInDetailView: View {
                     self.poseForImagePicker = nil
                 }
             }
+        }
+        .fullScreenCover(item: $selectedPhotoViewerItem) { item in
+            ProgressPhotoViewer(item: item)
         }
         .confirmationDialog(
             "Add Progress Photo",
@@ -255,19 +259,53 @@ struct CheckInDetailView: View {
     }
 
     private static let poseImageSize: CGFloat = 200
+    private static let poseImageCornerRadius: CGFloat = 22
 
     private func detailPoseRow(pose: Pose) -> some View {
         let path = checkIn.photoPath(for: pose)
         return HStack(alignment: .top, spacing: 16) {
             Group {
                 if let path, let img = ImageStore.shared.loadImage(path: path) {
-                    img
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: Self.poseImageSize, maxHeight: Self.poseImageSize)
-                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall))
+                    Button {
+                        selectedPhotoViewerItem = photoViewerItem(path: path, pose: pose)
+                    } label: {
+                        ZStack(alignment: .bottomTrailing) {
+                            img
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: Self.poseImageSize, height: Self.poseImageSize)
+                                .clipped()
+
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                Text("View")
+                            }
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(Color.black.opacity(0.55))
+                            .clipShape(Capsule())
+                            .padding(10)
+                        }
+                        .clipShape(
+                            RoundedRectangle(
+                                cornerRadius: Self.poseImageCornerRadius,
+                                style: .continuous
+                            )
+                        )
+                        .overlay(
+                            RoundedRectangle(
+                                cornerRadius: Self.poseImageCornerRadius,
+                                style: .continuous
+                            )
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        )
+                        .shadow(color: Color.black.opacity(0.18), radius: 12, x: 0, y: 8)
+                    }
+                    .buttonStyle(.plain)
                 } else {
-                    RoundedRectangle(cornerRadius: AppTheme.cornerRadiusSmall)
+                    RoundedRectangle(cornerRadius: Self.poseImageCornerRadius, style: .continuous)
                         .fill(Color(.tertiarySystemFill))
                         .frame(width: Self.poseImageSize, height: Self.poseImageSize)
                         .overlay {
@@ -280,22 +318,54 @@ struct CheckInDetailView: View {
             .frame(width: Self.poseImageSize, height: Self.poseImageSize)
 
             VStack(alignment: .leading, spacing: 8) {
-                Button {
-                    poseForPhotoSource = pose
-                } label: {
-                    Text(path != nil ? "Replace \(pose.displayName)" : "Add \(pose.displayName)")
-                        .font(.subheadline.weight(.medium))
-                }
-                .buttonStyle(.plain)
+                Text(pose.displayName)
+                    .font(.headline.weight(.semibold))
 
-                if path != nil {
-                    Button("Remove") {
-                        removePhoto(for: pose)
+                Text(path != nil ? "Tap the image to view it full screen." : "Add a progress photo for this angle.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Button {
+                        poseForPhotoSource = pose
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: path != nil ? "camera.rotate" : "plus.circle")
+                            Text(path != nil ? "Replace Photo" : "Add Photo")
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(Color(.secondarySystemBackground))
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(Color(.separator).opacity(0.3), lineWidth: 1)
+                        )
                     }
-                    .font(.subheadline)
-                    .foregroundStyle(.red)
+                    .buttonStyle(.plain)
+
+                    if path != nil {
+                        Button {
+                            removePhoto(for: pose)
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "trash")
+                                Text("Remove Photo")
+                            }
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.red)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(Color.red.opacity(0.12))
+                            .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer()
         }
@@ -390,6 +460,15 @@ struct CheckInDetailView: View {
         let formatter = DateFormatter()
         formatter.dateStyle = .long
         return formatter.string(from: date)
+    }
+
+    private func photoViewerItem(path: String, pose: Pose) -> ProgressPhotoViewerItem {
+        ProgressPhotoViewerItem(
+            id: "\(checkIn.id.uuidString)-\(pose.rawValue)",
+            path: path,
+            title: formattedDate(checkIn.date),
+            subtitle: pose.displayName
+        )
     }
 
     private func formattedWorkoutTime(_ date: Date) -> String {

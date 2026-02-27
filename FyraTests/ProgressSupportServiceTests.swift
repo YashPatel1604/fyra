@@ -75,4 +75,41 @@ final class ProgressSupportServiceTests: XCTestCase {
         XCTAssertEqual(status?.days.count, 3)
         XCTAssertFalse(status?.isComplete ?? true)
     }
+
+    func testWeeklySummaryIncludesImportedWorkouts() {
+        let now = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let checkIn = CheckIn(date: now, weight: 170, frontPhotoPath: "front.jpg", tagRawValues: [CheckInTag.energyImproved.rawValue])
+        let workouts = [
+            WorkoutSession(
+                healthKitUUID: "strength-1",
+                date: now,
+                activityName: "Traditional Strength Training",
+                durationMinutes: 62,
+                sourceName: "Apple Health"
+            ),
+            WorkoutSession(
+                healthKitUUID: "run-1",
+                date: calendar.date(byAdding: .day, value: -1, to: now)!,
+                activityName: "Outdoor Run",
+                durationMinutes: 31,
+                sourceName: "Apple Health"
+            )
+        ]
+
+        let summary = ProgressSupportService.weeklySummary(
+            checkIns: [checkIn],
+            workouts: workouts,
+            unit: .lb,
+            now: now,
+            calendar: calendar
+        )
+
+        XCTAssertEqual(summary.loggedDays, 1)
+        XCTAssertEqual(summary.photoDays, 1)
+        XCTAssertEqual(summary.winsLogged, 1)
+        XCTAssertEqual(summary.workoutCount, 2)
+        XCTAssertEqual(summary.workoutDays, 2)
+        XCTAssertEqual(summary.workoutMinutes, 93)
+        XCTAssertEqual(summary.strengthSessions, 1)
+    }
 }

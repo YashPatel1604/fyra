@@ -89,4 +89,46 @@ struct InsightService {
         let targetStr = "\(formatter.string(from: NSNumber(value: minP)) ?? "\(minP)")–\(formatter.string(from: NSNumber(value: maxP)) ?? "\(maxP)")"
         return "Current pace: \(rateStr) \(unit.rawValue)/week (target was \(targetStr))."
     }
+
+    static func workoutContext(
+        workouts: [WorkoutSession],
+        goalType: GoalType,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> String? {
+        let summary = ProgressSupportService.recentWorkoutSummary(
+            workouts: workouts,
+            now: now,
+            calendar: calendar
+        )
+        guard summary.count > 0 else { return nil }
+
+        switch goalType {
+        case .loseWeight:
+            if summary.minutes >= 150 {
+                return "Imported workouts show \(summary.minutes) active minutes this week. Activity looks consistent, so body-composition feedback will usually come more from intake and recovery than adding random extra sessions."
+            }
+            return "Imported workouts show \(summary.minutes) active minutes this week. If fat loss is the goal, 2-3 extra short sessions or walks could be the cleanest adjustment."
+        case .gainWeight:
+            if summary.strengthSessions >= 2 {
+                return "You logged \(summary.strengthSessions) strength sessions this week. That gives weight gain a better chance to go toward performance instead of just scale gain."
+            }
+            return "Imported workouts show only \(summary.strengthSessions) strength-focused sessions this week. If you are trying to gain weight, get lifting consistent before pushing calories much harder."
+        case .gainMuscle:
+            if summary.strengthSessions >= 3 {
+                return "You logged \(summary.strengthSessions) strength sessions this week. That supports muscle gain better than scale-only signals, so keep overload and recovery consistent."
+            }
+            if summary.cardioSessions > summary.strengthSessions {
+                return "Imported workouts were mostly cardio this week. If muscle gain is the goal, anchor the week with 3+ strength sessions first."
+            }
+            return "Imported workouts show \(summary.strengthSessions) strength sessions this week. For muscle gain, moving that closer to 3-4 quality lifts usually improves the signal."
+        case .recomposition:
+            if summary.strengthSessions >= 2 {
+                return "You logged \(summary.strengthSessions) strength sessions this week. For recomposition, that makes waist and photos more informative than scale changes alone."
+            }
+            return "Imported workouts show limited lifting this week. For recomposition, 2-4 strength sessions usually make the rest of the data easier to interpret."
+        case .none:
+            return "Imported workouts show \(summary.count) sessions across \(summary.days) days this week. Use that context alongside your check-ins before overreacting to short-term scale noise."
+        }
+    }
 }
