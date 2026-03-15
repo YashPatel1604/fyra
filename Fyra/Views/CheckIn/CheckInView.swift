@@ -34,27 +34,42 @@ struct CheckInView: View {
     @State private var showReturnBanner: Bool = false
     @State private var showInsights = false
     @State private var showOptionalDetails = false
+    @State private var selectedDate: Date = Calendar.current.startOfDay(for: Date())
+    @State private var weekOffset: Int = 0
 
     private enum FocusInput {
         case weight
         case waist
     }
 
+    private var calendar: Calendar { .current }
+    private var mondayCalendar: Calendar {
+        var c = calendar
+        c.firstWeekday = 2
+        return c
+    }
     private var settings: UserSettings? { settingsList.first }
     private var lastCheckInDate: Date? {
         allCheckIns.first(where: { $0.hasAnyContent })?.date
+    }
+    private var isSelectedDateToday: Bool {
+        calendar.isDate(selectedDate, inSameDayAs: Date())
     }
     private var weightUnit: WeightUnit { settings?.weightUnit ?? .lb }
     private var photoMode: PhotoMode { settings?.photoMode ?? .single }
     private var alignmentAssistEnabled: Bool { settings?.alignmentAssistEnabled ?? true }
     private var smartRemindersEnabled: Bool { settings?.smartRemindersEnabled ?? true }
-    private var lastWeight: Double? {
-        allCheckIns.first(where: { $0.weight != nil })?.weight
+    private var loggedCheckInDays: Set<Date> {
+        Set(allCheckIns.filter(\.hasAnyContent).map { calendar.startOfDay(for: $0.date) })
     }
-    private var previousDayWeight: Double? {
-        let calendar = Calendar.current
-        let startOfToday = calendar.startOfDay(for: Date())
-        return allCheckIns.first(where: { calendar.startOfDay(for: $0.date) < startOfToday && $0.weight != nil })?.weight
+    private var startOfCurrentWeek: Date {
+        weekStart(for: Date())
+    }
+    private var displayedWeekStart: Date {
+        calendar.date(byAdding: .weekOfYear, value: weekOffset, to: startOfCurrentWeek) ?? startOfCurrentWeek
+    }
+    private var weekDates: [Date] {
+        (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: displayedWeekStart) }
     }
     private var streakStats: StreakStats {
         ProgressSupportService.streakStats(checkIns: allCheckIns)
@@ -73,7 +88,7 @@ struct CheckInView: View {
         )
     }
     private var hasInsightsContent: Bool {
-        showReturnBanner || showFluctuationBanner || smartReminderMessage != nil || recoveryPlanStatus != nil
+        isSelectedDateToday && (showReturnBanner || showFluctuationBanner || smartReminderMessage != nil || recoveryPlanStatus != nil)
     }
     private var workoutsForCurrentDay: [WorkoutSession] {
         guard let date = currentCheckIn?.date else { return [] }
@@ -114,13 +129,20 @@ struct CheckInView: View {
                 }
             }
             .onAppear {
-                loadToday()
+                selectedDate = calendar.startOfDay(for: Date())
+                weekOffset = 0
+                loadCheckIn(for: selectedDate)
                 updateReturnBanner()
-                if showReturnBanner || showFluctuationBanner {
+                if hasInsightsContent {
                     showInsights = true
                 }
             }
             .scrollDismissesKeyboard(.interactively)
+            .onChange(of: selectedDate) { _, newValue in
+                loadCheckIn(for: newValue)
+                updateReturnBanner()
+                showInsights = isSelectedDateToday && hasInsightsContent
+            }
             .onChange(of: currentCheckIn?.weight) { _, _ in updateFluctuationBanner() }
             .onChange(of: weightText) { _, _ in updateFluctuationBanner() }
             .overlay(alignment: .bottom) {
@@ -186,20 +208,25 @@ struct CheckInView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 12) {
-            NeonIconBadge(systemName: "chart.line.uptrend.xyaxis", size: 48)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Track Your Progress")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(NeonTheme.textPrimary)
-                Text(formattedToday)
-                    .font(.subheadline)
-                    .foregroundStyle(NeonTheme.textTertiary)
+        VStack(spacing: 18) {
+            HStack(spacing: 12) {
+                NeonIconBadge(systemName: "chart.line.uptrend.xyaxis", size: 48)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Track Your Progress")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(NeonTheme.textPrimary)
+                    Text(formattedSelectedDate)
+                        .font(.subheadline)
+                        .foregroundStyle(NeonTheme.textTertiary)
+                }
+                Spacer()
+                VStack(alignment: .trailing, spacing: 8) {
+                    streakHeaderBadge
+                }
             }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 8) {
-                streakHeaderBadge
-            }
+
+            weekTimelineHeader
+            weekTimelineStrip
         }
         .padding(.horizontal, 24)
         .padding(.top, 28)
@@ -213,10 +240,10 @@ struct CheckInView: View {
         )
     }
 
-    private var formattedToday: String {
+    private var formattedSelectedDate: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE, MMMM d"
-        return formatter.string(from: Date())
+        return formatter.string(from: selectedDate)
     }
 
     private var streakHeaderBadge: some View {
@@ -231,6 +258,167 @@ struct CheckInView: View {
         .padding(.vertical, 6)
         .background(NeonTheme.accent)
         .clipShape(Capsule())
+    }
+
+    private var weekTimelineStrip: some View {
+        GeometryReader { proxy in
+            let spacing: CGFloat = 8
+            let itemWidth = max(42, (proxy.size.width - spacing * 6) / 7)
+
+            HStack(spacing: spacing) {
+                ForEach(weekDates, id: \.self) { day in
+                    weekDayCell(for: day)
+                        .frame(width: itemWidth)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(height: 90)
+    }
+
+    private var weekTimelineHeader: some View {
+        HStack(spacing: 12) {
+            Button {
+                shiftWeek(by: -1)
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(NeonTheme.textPrimary)
+                    .frame(width: 34, height: 34)
+                    .background(NeonTheme.surfaceAlt)
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(NeonTheme.borderStrong, lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            Text(weekRangeLabel)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(NeonTheme.textSecondary)
+
+            Spacer()
+
+            Button {
+                shiftWeek(by: 1)
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(NeonTheme.textPrimary)
+                    .frame(width: 34, height: 34)
+                    .background(NeonTheme.surfaceAlt)
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(NeonTheme.borderStrong, lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .disabled(weekOffset == 0)
+            .opacity(weekOffset == 0 ? 0.45 : 1)
+        }
+    }
+
+    private func weekDayCell(for day: Date) -> some View {
+        let dayStart = calendar.startOfDay(for: day)
+        let isSelected = calendar.isDate(dayStart, inSameDayAs: selectedDate)
+        let isToday = calendar.isDateInToday(dayStart)
+        let isFuture = dayStart > calendar.startOfDay(for: Date())
+        let isLogged = loggedCheckInDays.contains(dayStart)
+        let ringColor: Color = isLogged ? NeonTheme.accent : (isSelected ? NeonTheme.borderStrong : NeonTheme.border)
+
+        return Button {
+            selectedDate = dayStart
+        } label: {
+            VStack(spacing: 8) {
+                Text(weekdayShortLabel(dayStart))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(isSelected ? NeonTheme.textPrimary : NeonTheme.textTertiary)
+
+                ZStack {
+                    Circle()
+                        .stroke(
+                            ringColor.opacity(isFuture ? 0.5 : 1.0),
+                            style: StrokeStyle(lineWidth: 2, dash: isLogged || isSelected || isFuture ? [] : [4, 4])
+                        )
+                        .frame(width: 38, height: 38)
+
+                    Text(dayNumberString(dayStart))
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(isFuture ? NeonTheme.textTertiary : NeonTheme.textPrimary)
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    if isToday {
+                        Circle()
+                            .fill(NeonTheme.accent)
+                            .frame(width: 8, height: 8)
+                            .offset(x: 2, y: 2)
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                    .fill(isSelected ? NeonTheme.background : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: NeonTheme.cornerMedium, style: .continuous)
+                    .stroke(isSelected ? NeonTheme.borderStrong : Color.clear, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(isFuture)
+        .opacity(isFuture ? 0.55 : 1)
+    }
+
+    private func weekdayShortLabel(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE"
+        return formatter.string(from: date)
+    }
+
+    private func dayNumberString(_ date: Date) -> String {
+        let day = calendar.component(.day, from: date)
+        return "\(day)"
+    }
+
+    private var weekRangeLabel: String {
+        guard let weekEnd = calendar.date(byAdding: .day, value: 6, to: displayedWeekStart) else { return "" }
+        let start = shortDate(displayedWeekStart)
+        let end: String
+        if calendar.component(.month, from: displayedWeekStart) == calendar.component(.month, from: weekEnd) {
+            end = "\(calendar.component(.day, from: weekEnd))"
+        } else {
+            end = shortDate(weekEnd)
+        }
+        return "\(start) - \(end)"
+    }
+
+    private func weekStart(for date: Date) -> Date {
+        let day = calendar.startOfDay(for: date)
+        return mondayCalendar.date(from: mondayCalendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: day)) ?? day
+    }
+
+    private func shiftWeek(by delta: Int) {
+        let newOffset = min(0, weekOffset + delta)
+        guard newOffset != weekOffset else { return }
+
+        withAnimation(.easeInOut(duration: 0.2)) {
+            weekOffset = newOffset
+        }
+
+        guard let shifted = calendar.date(byAdding: .day, value: delta * 7, to: selectedDate) else {
+            selectedDate = calendar.startOfDay(for: Date())
+            return
+        }
+
+        let shiftedStart = calendar.startOfDay(for: shifted)
+        let todayStart = calendar.startOfDay(for: Date())
+        selectedDate = shiftedStart > todayStart ? todayStart : shiftedStart
     }
 
     private func smartReminderCard(message: String) -> some View {
@@ -342,6 +530,10 @@ struct CheckInView: View {
     }
 
     private func updateReturnBanner() {
+        guard isSelectedDateToday else {
+            showReturnBanner = false
+            return
+        }
         showReturnBanner = EngagementService.shouldShowReturnBanner(
             lastCheckInDate: lastCheckInDate,
             returnBannerDismissedAt: settings?.returnBannerDismissedAt
@@ -386,17 +578,25 @@ struct CheckInView: View {
     }
 
     private func updateFluctuationBanner() {
+        guard isSelectedDateToday else {
+            showFluctuationBanner = false
+            return
+        }
         let todayRaw = Double(weightText.trimmingCharacters(in: .whitespacesAndNewlines))
         let raw = todayRaw.flatMap { $0.isFinite ? $0 : nil }
         showFluctuationBanner = InsightService.shouldShowFluctuationBanner(
             todayRaw: raw ?? currentCheckIn?.weight,
-            lastRaw: previousDayWeight,
+            lastRaw: previousWeight(before: selectedDate),
             unit: weightUnit,
             dismissedDateString: settings?.fluctuationBannerDismissedDateStrings.contains(todayDateString) == true ? todayDateString : nil
         )
     }
 
     private func dismissFluctuationBanner() {
+        guard isSelectedDateToday else {
+            showFluctuationBanner = false
+            return
+        }
         guard let settings = settingsList.first else { return }
         if !settings.fluctuationBannerDismissedDateStrings.contains(todayDateString) {
             settings.fluctuationBannerDismissedDateStrings.append(todayDateString)
@@ -409,7 +609,7 @@ struct CheckInView: View {
         HStack(alignment: .top, spacing: 14) {
             NeonIconBadge(systemName: "scalemass", size: 56)
             VStack(alignment: .leading, spacing: 6) {
-                Text("Today's Weight")
+                Text(weightCardTitle)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(NeonTheme.textSecondary)
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -428,6 +628,10 @@ struct CheckInView: View {
         }
         .padding(24)
         .neonCard()
+    }
+
+    private var weightCardTitle: String {
+        isSelectedDateToday ? "Today's Weight" : "Weight for \(shortDate(selectedDate))"
     }
 
     private var workoutsCard: some View {
@@ -819,7 +1023,7 @@ struct CheckInView: View {
         Button {
             save()
         } label: {
-            Text("Save Today's Progress")
+            Text(saveButtonTitle)
                 .font(.headline.weight(.bold))
                 .foregroundStyle(hasChanges ? Color.black : NeonTheme.textTertiary)
                 .frame(maxWidth: .infinity)
@@ -829,6 +1033,10 @@ struct CheckInView: View {
                 .shadow(color: hasChanges ? NeonTheme.accent.opacity(0.4) : Color.clear, radius: 16, x: 0, y: 8)
         }
         .disabled(!hasChanges)
+    }
+
+    private var saveButtonTitle: String {
+        isSelectedDateToday ? "Save Today's Progress" : "Save Progress for \(shortDate(selectedDate))"
     }
 
     private var loggedToastView: some View {
@@ -843,33 +1051,43 @@ struct CheckInView: View {
             .padding(.bottom, 40)
     }
 
-    private func loadToday() {
-        let calendar = Calendar.current
-        let startOfToday = calendar.startOfDay(for: Date())
-        let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday)!
+    private func loadCheckIn(for date: Date) {
+        let dayStart = calendar.startOfDay(for: date)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart)!
+        let priorWeight = previousWeight(before: dayStart)
 
-        if let existing = allCheckIns.first(where: { $0.date >= startOfToday && $0.date < endOfToday }) {
+        if let existing = allCheckIns.first(where: { $0.date >= dayStart && $0.date < dayEnd }) {
             currentCheckIn = existing
+            isNewCheckIn = false
             weightText = existing.weight.map { formatWeight($0) } ?? ""
             noteText = existing.note ?? ""
             waistText = existing.waistMeasurement.map { formatWeight($0) } ?? ""
             selectedTagRawValues = Set(existing.tagRawValues)
             customTagText = existing.tagRawValues.first(where: { $0.hasPrefix("custom:") }).map { String($0.dropFirst(7)) } ?? ""
-            if let last = lastWeight, existing.weight == nil {
-                weightText = formatWeight(last)
+            if let priorWeight, existing.weight == nil {
+                weightText = formatWeight(priorWeight)
             }
-            updateFluctuationBanner()
+            hasChanges = false
         } else {
-            let new = CheckIn(date: startOfToday)
+            let new = CheckIn(date: dayStart)
             currentCheckIn = new
             isNewCheckIn = true
-            weightText = lastWeight.map { formatWeight($0) } ?? ""
+            weightText = priorWeight.map { formatWeight($0) } ?? ""
             noteText = ""
             waistText = ""
             selectedTagRawValues = []
             customTagText = ""
             hasChanges = true
         }
+        updateFluctuationBanner()
+    }
+
+    private func previousWeight(before day: Date) -> Double? {
+        let dayStart = calendar.startOfDay(for: day)
+        return allCheckIns.first(where: { checkIn in
+            guard checkIn.weight != nil else { return false }
+            return calendar.startOfDay(for: checkIn.date) < dayStart
+        })?.weight
     }
 
     private func formatWeight(_ value: Double) -> String {
